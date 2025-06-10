@@ -667,7 +667,8 @@ exports.config = {
     },
 
     variants : {
-        wsIdItemVariants               : 274,
+        // BETE change!
+        wsIdItemVariants               : 251,
         sectionLabelVariantDefinition  : 'Variant Definition',
         fieldIdBaseItem                : 'BASE_ITEM',
         fieldIdBaseItemNumber          : 'BASE_ITEM_NUMBER',
