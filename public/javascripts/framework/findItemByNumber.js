@@ -1,10 +1,17 @@
 $(document).ready(function() {
 
     setUIEvents();
-
     appendProcessing('create');
 
-    if(number === '') { 
+    if(!isBlank(urlParameters.level)) {
+        $('body').removeClass('surface-level-2').addClass('surface-level-' + urlParameters.level);
+    }
+
+    //  http://localhost:8080/addins/item?number=002771&level=1
+    //  http://localhost:8080/service?number=002771&level=1
+    //  http://localhost:8080/service?number=3D-25-000035&wsid=95&level=1&reference=ENGINEERING_BOM&level=1
+    
+    if(urlParameters.number === '') { 
 
         $('#create-message').show();
         $('.processing').hide();
@@ -12,38 +19,45 @@ $(document).ready(function() {
     } else {
 
         let params = {
-            'wsId'      : config.items.wsId,
-            'limit'     : 1,
-            'query'     : number,
-            'wildcard'  : false
+            wsId     : urlParameters.wsid || common.workspaceIds.items,
+            limit    : 1,
+            query    : urlParameters.number,
+            wildcard : false
         }
 
-//   http://localhost:8080/addins/item?number=002771&options=autoCreate
-/*
+        console.log(params);
 
+        if(!isBlank(urlParameters.reference)) params.bulk = true;
 
-
-http://localhost:8080/addins/item?number=12345678&options=autoCreate
-
-http://localhost:8080/addins/item?number=01-1918&options=autoCreate
-
-
-*/
-
-        $.get('/plm/search-descriptor', params, function(response) {
+        $.post('/plm/search-descriptor', params, function(response) {
 
             if(response.data.items.length > 0) {
 
-                $('.processing').hide();
-                $('#search-message').hide();
-
+                let data = response.data.items[0];
                 let link = response.data.items[0].__self__;
-
                 let url  = window.location.href.split('?')[0];
+                
+                if(isBlank(urlParameters.reference)) {
+
                     url += '?dmsId=' + link.split('/')[6];
                     url += '&wsId='  + link.split('/')[4];
 
-                if(theme !== '') url += '&theme=' + theme;
+                } else {
+
+                    let reference = getSectionFieldValue(data.sections, urlParameters.reference, '', 'link');
+
+                    url += '?dmsId='        + reference.split('/')[6];
+                    url += '&wsId='         + reference.split('/')[4];
+                    url += '&dmsidcontext=' +      link.split('/')[6];
+                    url += '&wsidcontext='  +      link.split('/')[4];
+
+                }
+                    
+                if(!isBlank(options)) url += '&options=' + options;
+
+                if(!isBlank(urlParameters.type))  url += '&type='  + urlParameters.type;
+                if(!isBlank(urlParameters.host))  url += '&host='  + urlParameters.host;
+                if(!isBlank(urlParameters.theme)) url += '&theme=' + urlParameters.theme;
 
                 window.location = url;
 
@@ -57,7 +71,6 @@ http://localhost:8080/addins/item?number=01-1918&options=autoCreate
                     extended    : true,
                     limit       : 1
                 }, function(response) {
-                    console.log(response);
 
                     if(response.data.results.length === 0) {
 
@@ -69,7 +82,6 @@ http://localhost:8080/addins/item?number=01-1918&options=autoCreate
                     } else {
                         console.log('Copying item from Vault');
                     }
-
 
                 });
             } else {
@@ -91,7 +103,7 @@ function setUIEvents() {
 
     $('#create-action').click(function() {
         $('#create-processing').show();
-        insertCreateForm(config.search.wsId, 'create', true);
+        // insertCreateForm(config.search.wsId, 'create', true);
         $('#create-title').html($(this).html());
         $('#search-screen').hide();
         $('#create-screen').show();

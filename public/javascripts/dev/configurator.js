@@ -450,7 +450,7 @@ function clickBOMItemDone(elemClicked, e) {
 
     if(elemClicked.hasClass('selected')) {
         viewerSetColor(partNumber, { 
-            color     : config.vectors.red,
+            color     : colors.vectors.red,
             fitToView : true,
             unhide    : false
         });
@@ -870,11 +870,11 @@ function updateViewer() {
 
                 pathLast = dataPath;
 
-                // viewerSetColor(config.vectors.yellow);
+                // viewerSetColor(colors.vectors.yellow);
             } else {
                 pathsHighlight.push(dataPath);
 
-                // viewerSetColor(config.vectors.blue);
+                // viewerSetColor(colors.vectors.blue);
             }
         } else {
             viewerHideModel(dataPath, { usePath : true, fitToView: false, ghosting : false });
@@ -885,7 +885,7 @@ function updateViewer() {
     // viewerResetColors();
     viewerSetColors(pathsHighlight, { resetColors: true, usePath : true, fitToView: false, unhide : false});
 
-    if(pathLast !== '') viewerSetColor(pathLast, { resetColors : false, usePath : true, fitToView: false, unhide : false, color : config.vectors.yellow });
+    if(pathLast !== '') viewerSetColor(pathLast, { resetColors : false, usePath : true, fitToView: false, unhide : false, color : colors.vectors.yellow });
 
 }
 
@@ -944,7 +944,7 @@ function submitCreateFormDone22(id, link) {
         let linkFeature = elemFeature.attr('data-link');
         let linkOption  = elemOption.attr('data-link');
 
-        requests.push($.get('/plm/add-grid-row', {
+        requests.push($.post('/plm/add-grid-row', {
             link : linkVariant,
             'data' : [
                 { fieldId : 'FEATURE', value : { link : linkFeature } },
@@ -1036,7 +1036,7 @@ function uploadImage() {
 
         addFieldToPayload(params.sections, wsConfig.variants.sections, null, 'IMAGE'  , value);
 
-        $.post('/plm/update', params, function(response) {
+        $.post('/plm/edit', params, function(response) {
             $('#overlay').hide();
         });
 
@@ -1083,7 +1083,7 @@ function uploadImages() {
                         addFieldToPayload(params.sections, wsConfig.variants.sections, null, 'IMAGE_3', values[3]);
                         addFieldToPayload(params.sections, wsConfig.variants.sections, null, 'IMAGE_4', values[4]);
                 
-                        $.post('/plm/update', params, function(response) {
+                        $.post('/plm/edit', params, function(response) {
                             $('#overlay').hide();
                         });
     

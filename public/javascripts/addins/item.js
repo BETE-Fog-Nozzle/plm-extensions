@@ -1,8 +1,7 @@
-let urlParameters = getURLParameters();
-
 $(document).ready(function() {
 
     setUIEvents();
+    setAddinEvents();
 
     insertItemSummary(urlParameters.link, {
         id         : 'item',
@@ -17,9 +16,9 @@ $(document).ready(function() {
                 collapsed       : true, 
                 editable        : true,
                 toggles         : true,
-                expandSections  : config.addins.item.expandSections,
-                sectionsEx      : config.addins.item.sectionsEx,
-                fieldsEx        : config.addins.item.fieldsEx
+                expandSections  : config.item.expandSections,
+                sectionsEx      : config.item.sectionsEx,
+                fieldsEx        : config.item.fieldsEx
             } 
         },{ 
             type   : 'attachments', 
@@ -45,6 +44,7 @@ $(document).ready(function() {
                 path             : true,
                 search           : true,
                 toggles          : true,
+                onClickItem      : function(elemClicked) { selectBOMItem(elemClicked); },
                 afterCompletion  : function(id) { genAddinPLMBOMActions(id); }
             } 
         },{ 
@@ -61,3 +61,49 @@ $(document).ready(function() {
 });
 
 function setUIEvents() {}
+
+
+// Add button to BOM toolbar for isolation of selected item
+function insertBOMDone() {
+
+    if(host.toLowerCase() === 'inventor') {
+
+    let elemToolbar = $('#item-bom-controls');
+
+        $('<div></div>').prependTo(elemToolbar)
+            .addClass('button')
+            .addClass('with-icon')
+            .addClass('icon-check-box')
+            .attr('id', 'item-bom-isolate-toggle')
+            .html('Isolate')
+            .click(function() {
+                $(this).toggleClass('main').toggleClass('icon-check-box').toggleClass('icon-check-box-checked');
+            });
+
+    }
+
+}
+
+
+// Upon item selection in BOM, select / isolate components in Inventor
+function selectBOMItem(elemClicked) {
+
+    if(host.toLowerCase() === 'inventor') {
+
+        let isolate = $('#item-bom-isolate-toggle').hasClass('main');
+
+        if(isolate) invokeAddinAction([elemClicked], 'isolateComponent');
+        else invokeAddinAction([elemClicked], 'selectComponent');
+
+    }
+
+}
+
+
+// Highlight item based on CAD/PDM selection
+function selectComponent(number) {
+
+    $('#item-tabs').children().eq(2).click();
+    bomDisplayItemByPartNumber(number, true, true);
+
+}

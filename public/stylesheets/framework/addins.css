@@ -9,7 +9,7 @@
 .addin .attachment-size, 
 .addin .attachment-user, 
 .addin .attachment-date { 
-    font-size   : 11px; 
+    font-size   : 12px; 
     line-height : 16px;
 }
 .addin th,
@@ -23,19 +23,29 @@
     height  : 18px;
 }
 .addin input  { 
-    padding : 2px 4px; 
+    max-height : 21px;
+    min-height : 21px;
+    height     : 21px;
 }
-.addin select { 
+.addin select.button { 
     height      : 24px !important; 
     line-height : 24px !important; 
     padding     : 1px 4px; 
 }
 .addin .screen { 
+    top : 42px;
+}
+.addin .screen.no-header { 
     top : 0px;
 }
 .addin .section {
-    font-size : 12px;
-    padding   : 2px 12px;
+    font-size   : 12px;
+    padding     : 2px 12px;
+}
+.addin .section,
+.addin .section::before {
+    height      : 22px !important;
+    line-height : 22px !important;
 }
 .addin .section-fields .field {
     padding: 1px 0px;
@@ -47,8 +57,10 @@
     padding-left : 2px !important;
 }
 .addin .panel-search-input {
-    margin-left : 2px;
-    width       : 78px;
+    margin-left    : 2px;
+    padding-top    : 0px;
+    padding-bottom : 0px;
+    width          : 78px;
 }
 .addin .attachments-content.list .attachment-summary {
     gap : var(--spacer-xs);
@@ -68,6 +80,55 @@
 }
 
 
+/*  HEADER */
+/* ----------------------------------------------------------------------------- */
+.addin.light-theme #header,
+.addin.dark-theme  #header,
+.addin.black-theme #header {
+    background : transparent;
+}
+.addin.dark-theme #header.dark .button,
+.addin.black-theme #header.dark .button {
+    background   : var(--color-surface-level-4);
+    border-color : var(--color-surface-level-4);
+}
+.addin #header {
+    height : 42px;
+}
+.addin #header-logo,
+.addin #header-title,
+.addin #header-avatar {
+    display : none;
+}
+.addin #header-subtitle {
+    border       : none;
+    font-size    : 14px;
+    font-weight  : 800;
+    height       : 42px;
+    line-height  : 42px;
+    margin       : 0px;
+    padding-left : 24px;
+}
+.addin #header-toolbar {
+    height  : 24px;
+    margin  : 0px;
+    padding : 9px 24px;
+}
+.addin #header .button {
+    margin : 0px;
+}
+.addin.light-theme #header.dark .button,
+.addin.dark-theme  #header.dark .button,
+.addin.black-theme #header.dark .button {
+    color : var(--color-font);
+}
+.addin.light-theme #header.dark .button.default,
+.addin.dark-theme  #header.dark .button.default,
+.addin.black-theme #header.dark .button.default {
+    color : white;
+}
+
+
 /*  BUTTONS */
 /* ----------------------------------------------------------------------------- */
 .addin div.button {
@@ -78,17 +139,24 @@
 }
 .addin .button.icon {
     height      : 22px;
-    width       : 26px;
     line-height : 22px;
     font-size   : 16px;
     padding     : 0px;
+    max-width   : 22px;
+    min-width   : 22px;
+    width       : 22px;
 }
 .addin .button.with-icon { padding-left : 8px; }
-.addin .button.with-icon::before { 
+.addin .button.with-icon::before,
+.addin .button.with-toggle::after { 
     font-size   : 20px; 
     line-height : 22px; 
+    margin-left : 0px;
 }
-
+.addin .button.with-toggle { 
+    gap       : 8px;
+    min-width : unset;
+}
 
 
 /*  PANEL HEADER & CONTENT */
@@ -106,12 +174,14 @@
     line-height : 16px;
 }
 .addin .panel-title-sub {
+    display     : none;
     font-size   : 11px;
     line-height : 14px;
 }
 .addin .panel-title-sub .panel-status {
     font-size   : 9px;
     height      : 14px;
+    line-height : 14px;
 }
 .addin .panel-summary {
     overflow        : hidden;
@@ -119,9 +189,10 @@
     min-width       : unset;
     width           : unset;
 }
-.addin .panel-controls {
+.addin .panel-controls,
+.addin .panel-actions {
     gap      : 4px;
-    padding  : 8px 18px;
+    padding  : 8px 18px 0px;
     position : absolute;
     top      : 0px;
     right    : 0px;
@@ -138,7 +209,13 @@
     padding-top : 12px;
 }
 .addin .panel-top.with-tabs > .panel-content > .panel-top > .panel-header > .panel-controls {
+    height  : 22px;
     padding : 0px 6px 0px 0px;
+}
+.addin .panel-top.with-tabs > .panel-content > .panel-top > .panel-actions {
+    left    : 6px;
+    right   : unset;
+    padding : 0px;
 }
 .addin .panel-top.with-tabs > .panel-content > .panel-top > .panel-content {
     top : 34px;
@@ -149,14 +226,22 @@
 /* ----------------------------------------------------------------------------- */
 .addin .item.with-tabs > .panel-tabs,
 .addin .panel-tabs {
-    top : 66px;
+    top : 46px;
 }
 .addin .panel-top.with-tabs > .panel-content {
     border-width : 12px;
-    top          : 100px;
+    top          : 80px;
     right        : 0px;
     bottom       : 0px;
     left         : 0px;
+}
+.addin .tabs {
+    font-size   : 12px;
+    padding-top : 0px;
+}
+.addin .tabs,
+.addin .tabs > div {
+    height : 28px;
 }
 
 
@@ -185,7 +270,7 @@
 .addin .tiles.list.xs .tile-image { width : 72px; }
 .addin .tile-title { 
     display     : flex;
-    font-size   : 11px !important;
+    font-size   : 12px !important;
     gap         : 12px;
     line-height : 12px;
 }
@@ -198,7 +283,7 @@
     font-size   : 12px;
     line-height : 14px;
 }
-.addin .tile-subtitle { font-size : 11px !important; }
+.addin .tile-subtitle { font-size : 12px !important; }
 .addin .tiles.wide.s { padding-top: var(--spacer-s); }
 
 /* Tile Actions */
@@ -238,6 +323,37 @@
     max-width : 28px;
     width     : 28px;
 }
+.addin .table-check-box {
+    max-width : 24px;
+    min-width : 24px;
+    width     : 24px;
+}
+.addin .table-group-title::before {
+    font-size : 16px;
+    top       : 4px;
+}
+.addin .panel-content.s th.table-check-box > .icon,
+.addin .panel-content.s tr.content-item > td > .icon {
+    font-size : 16px;
+}
+.addin .panel-content.s thead th {
+    height      : 22px;
+    line-height : 22px;
+    padding     : 0px 4px;
+}
+.addin .panel-content.s tr > td, 
+.addin .panel-content.s tr.content-item > td > input, 
+.addin .panel-content.s tr.content-item > td > select, 
+.addin .panel-content.s tr.content-item > td > textarea {
+    font-size   : 12px;
+    height      : 22px;
+    line-height : 22px;
+    padding     : 0px 6px;
+    min-height  : 22px;
+    max-width   : calc(100% - 12px);
+    min-width   : calc(100% - 12px);
+    width       : calc(100% - 12px);
+}
 
 
 
@@ -255,11 +371,14 @@
     padding-top    : 0px;
     padding-bottom : 0px;
 } */
+.addin .bom-descriptor {
+    flex-grow : 1;
+}
 .addin .table-actions {
     display  : none;
     gap      : 2px;
-    position : absolute;
-    right    : 4px;
+    /* position : absolute; */
+    /* right    : 4px; */
     z-index  : 5;
 }
 .addin .tree-item:hover .table-actions {
@@ -273,20 +392,33 @@
     font-size : 11px;
     padding   : 2px 12px;
 }
+.addin .bom-path { 
+    height : 24px; 
+    right  : 52px; 
+}
+.addin .bom-path > div {
+    height      : 24px;
+    line-height : 24px;
+}
+.addin .panel-counters {
+    padding-top    : 1px;
+    padding-bottom : 0px;  
+}
+.addin .panel-counters > div {
+    padding-top    : 2px;
+    padding-bottom : 1px;
+}
 .addin .panel-top.with-panel-counters.with-bom-path > .panel-content {
-    bottom : 64px;
+    bottom : 54px;
 }
-.addin .panel-top.with-panel-counters.with-bom-path > .bom-path {
-    bottom : 30px;
+.addin .panel-top.with-panel-counters.with-bom-path > .bom-path,
+.addin .panel-top.with-panel-counters.with-bom-path > .bom-go-to {
+    bottom : 26px;
 }
-
 
 
 /*  DETAILS */
 /* ----------------------------------------------------------------------------- */
-.addin .section-fields {
-    gap : 4px;
-}
 .addin .field-value.radio {
     display         : flex;
     flex-direction  : column;
@@ -295,7 +427,32 @@
 .addin .radio-label {
     top : 0px;
 }
-
+.addin .field-label,
+.addin .field-value,
+.addin .field-value .field-unit {
+    height: 22px;
+    line-height: 22px !important;
+    padding-top: 0px !important;
+}
+.addin .field-value .field-unit {
+    padding : 0px 0px 0px 8px !important;
+}
+.addin .field-value.field-type-image,
+.addin .field-value.field-type-radio {
+    height : unset;
+}
+.addin .field-value.field-editable {
+    margin-bottom : 6px !important;
+}
+.addin .radio-option {
+    gap : 4px;
+}
+.addin .radio-option > * {
+    line-height : 18px;
+}
+.addin .radio-icon {
+    font-size : 16px;
+}
 
 
 /*  ATTACHMENTS */
@@ -328,4 +485,35 @@
 }
 .path-actions > div {
     color : var(--color-surface-level-4);
+}
+
+
+
+/*  RESPONSIVE LAYOUT */
+/* ----------------------------------------------------------------------------- */
+@media (max-width: 1440px) {
+   
+    #header-toolbar .button.with-icon {
+        min-width : 80px;
+        max-width : unset;
+        overflow  : visible;
+    }
+ 
+    #header-toolbar .button.with-icon::before {
+        margin-right: 4px;
+    }
+
+}
+@media (max-width: 640px) {
+    
+    #header-toolbar .button.with-icon {
+        min-width: unset;
+        max-width: 22px;
+        overflow: hidden;
+    }
+    
+    #header-toolbar .button.with-icon::before {
+        margin-right: 24px;
+    }
+
 }

@@ -1,4 +1,89 @@
-let isolate = false;
+let isolate          = false;
+let isAddin          = false;
+let sendAddinMessage = true;
+let messagesAddin    = [];
+
+
+
+// Register listener for CAD/PDM events
+function setAddinEvents() {
+
+    // console.log('setAddinEvents START');
+
+    if(typeof chrome !== 'undefined') {
+        if(typeof chrome.webview !== 'undefined') {
+
+            console.log('setAddinEvents : adding Event Listener');
+            
+            $('body').addClass('addin');
+            $('body').addClass('is-addin');
+            isAddin = true;
+
+            window.chrome.webview.addEventListener('message', arg => { 
+
+                console.log('---------------------------------------------------');
+                console.log('Received message from Inventor');
+                console.log(arg);              
+
+                let message = arg.data.split(';');
+                let action  = message[0].split(':')[0];
+                let number  = message[0].split(':')[1];
+
+                // let response = arg.data.split(';');
+
+                // console.log(action);
+                // console.log(number);
+                // console.log(message.length);
+
+                // 
+
+                // 'response:title:text'
+                // 'selectInstance:partNumber:instanceId'
+                // selectInstance:94500A231:002771.iam|Build Assembly: 1|94500A231:1
+                // selectComponent:94500A231
+                // selectInstance('002771.iam|Build Assembly:1|94500A231:6');
+
+                $('#overlay').hide();
+
+                switch(action) {
+
+                    case 'plm-item': 
+                        console.log(' message = ' + arg.data);
+                        // let elemFocus = $('.addin-focus-element');
+                        // if(elemFocus.length === 1) elemFocus.focus();
+                        break;
+
+                    case 'response': 
+                        let messageTitle = response[1];
+                        console.log(' messageTitle = ' + messageTitle);
+                        let messageText  = (response.length > 2) ? response[2] : 'Please contact your administrator';
+                        if(messageTitle != 'success') showErrorMessage(messageTitle, messageText);
+                        break;
+
+                    case 'selectInstance':
+                        let instanceId = message[1] || '';
+                        console.log(' instanceId = ' + instanceId);
+                        sendAddinMessage = false;
+                        selectInstance(instanceId);
+                        break;
+
+                    case 'selectComponent':
+                        
+                        // let partNumber = (response.length > 1) ? response[1] : '';
+                        console.log(' partNumber = ' + number);
+                        selectComponent(number);
+                        break;
+
+                    default: break;
+
+                }
+
+            });
+
+        }
+    }
+
+}
 
 
 // Confirm successful login
@@ -24,9 +109,8 @@ function genAddinTilesActions(elemContent) {
 function genAddinTileActions(elemTile) {
 
     let elemActions = $('<div></div>').appendTo(elemTile).addClass('tile-actions');
+    let isDrawing   = elemTile.hasClass('drawing');
 
-    console.log(host);
-    
     switch(elemTile.attr('data-type')) {
 
         case 'vault-folder': 
@@ -40,15 +124,15 @@ function genAddinTileActions(elemTile) {
         case 'vault-file': 
         case 'vault-item': 
             if(host === 'inventor') {
-                genAddinTileAction(elemActions, 'gotoVaultFile', 'icon-folder-open', 'Go To Folder'); 
-                genAddinTileAction(elemActions, 'gotoVaultItem', 'icon-open'       , 'Go To Item'); 
-                genAddinTileAction(elemActions, 'addComponent' , 'icon-select'     , 'Place Component'); 
-                genAddinTileAction(elemActions, 'openComponent', 'icon-product'    , 'Open Component'); 
+                // genAddinTileAction(elemActions, 'gotoVaultFile', 'icon-goto-folder', 'Go To Folder'); 
+                // genAddinTileAction(elemActions, 'gotoVaultItem', 'icon-vault-item' , 'Go To Item'); 
+                genAddinTileAction(elemActions, 'openComponent', 'icon-folder-open', 'Open Component'); 
+                if(!isDrawing) genAddinTileAction(elemActions, 'addComponent', 'icon-product', 'Place Component'); 
             } else {
-                genAddinTileAction(elemActions, 'gotoVaultFile', 'icon-folder-open', 'Go To Folder'); 
-                genAddinTileAction(elemActions, 'gotoVaultItem', 'icon-open'       , 'Go To Item'); 
-                genAddinTileAction(elemActions, 'addComponent' , 'icon-select'     , 'Insert into CAD'); 
-                genAddinTileAction(elemActions, 'openComponent', 'icon-product'    , 'Open in CAD'); 
+                genAddinTileAction(elemActions, 'gotoVaultFile', 'icon-goto-folder', 'Go To Folder'); 
+                genAddinTileAction(elemActions, 'gotoVaultItem', 'icon-vault-item' , 'Go To Item'); 
+                genAddinTileAction(elemActions, 'openComponent', 'icon-folder-open', 'Open in CAD'); 
+                if(!isDrawing) genAddinTileAction(elemActions, 'addComponent', 'icon-product', 'Insert into CAD'); 
             }
             break;
 
@@ -68,22 +152,16 @@ function genAddinTileActions(elemTile) {
 }
 function genAddinPLMItemTileActions(elemActions) {
 
-    console.log(host);
-
     if(host === 'inventor') {   
-        genAddinTileAction(elemActions, 'selectComponent' , 'icon-select-circle', 'Select in Window'); 
-        genAddinTileAction(elemActions, 'isolateComponent', 'icon-3d'           , 'Isolate in Window'); 
-        genAddinTileAction(elemActions, 'addComponent'    , 'icon-select'       , 'Place Component'); 
-        genAddinTileAction(elemActions, 'openComponent'   , 'icon-product'      , 'Open Component');  
+        // genAddinTileAction(elemActions, 'gotoVaultFile', 'icon-goto-folder', 'Go To Folder'); 
+        // genAddinTileAction(elemActions, 'gotoVaultItem', 'icon-vault-item' , 'Go To Item'); 
+        genAddinTileAction(elemActions, 'openComponent', 'icon-folder-open', 'Open Component');  
+        genAddinTileAction(elemActions, 'addComponent' , 'icon-product'    , 'Place Component'); 
     } else {
-        // genAddinTileAction(elemActions, 'gotoVaultFile', 'icon-product', 'Navigate to file in Vault');
-        // genAddinTileAction(elemActions, 'gotoVaultItem', 'icon-item'   , 'Navigate to item in Vault');
-        // genAddinTileAction(elemActions, 'addComponent' , 'icon-create' , 'Add to active window');
-        // genAddinTileAction(elemActions, 'openComponent', 'icon-clone'  , 'Open in new window');
-        genAddinTileAction(elemActions, 'gotoVaultFile', 'icon-folder-open', 'Go To Folder'); 
-        genAddinTileAction(elemActions, 'gotoVaultItem', 'icon-open'       , 'Go To Item'); 
-        genAddinTileAction(elemActions, 'addComponent' , 'icon-select'     , 'Insert into CAD'); 
-        genAddinTileAction(elemActions, 'openComponent', 'icon-product'    , 'Open in CAD'); 
+        genAddinTileAction(elemActions, 'gotoVaultFile', 'icon-goto-folder', 'Go To Folder'); 
+        genAddinTileAction(elemActions, 'gotoVaultItem', 'icon-vault-item' , 'Go To Item'); 
+        genAddinTileAction(elemActions, 'openComponent', 'icon-folder-open', 'Open in CAD'); 
+        genAddinTileAction(elemActions, 'addComponent' , 'icon-product'    , 'Insert into CAD'); 
     }
 
 }
@@ -94,7 +172,6 @@ function genAddinTileAction(elemActions, action, icon, tooltip) {
     let elemAction = $('<div></div>').appendTo(elemActions)
         .addClass('button')
         .addClass('icon')
-        .addClass('filled')
         .addClass(icon)
         .attr('title', tooltip)
         .click(function(e) {
@@ -117,14 +194,22 @@ async function invokeAddinAction(elements, action) {
     
     switch(action) {
 
-        case 'addComponent'     : chrome.webview.postMessage("addComponent:"     + selection.toString()); break;
-        case 'openComponent'    : chrome.webview.postMessage("openComponent:"    + selection.toString()); break;
-        case 'gotoVaultFolder'  : chrome.webview.postMessage("gotoVaultFolder:"  + selection.toString()); break;
-        case 'gotoVaultFile'    : chrome.webview.postMessage("gotoVaultFile:"    + selection.toString()); break;
-        case 'gotoVaultItem'    : chrome.webview.postMessage("gotoVaultItem:"    + selection.toString()); break;
-        case 'gotoVaultECO'     : chrome.webview.postMessage("gotoVaultECO:"     + selection.toString()); break;
-        case 'selectComponent'  : chrome.webview.postMessage("selectComponent:"  + selection.toString()); break;
-        case 'isolateComponent' : chrome.webview.postMessage("isolateComponent:" + selection.toString()); break;
+        case 'addComponent'     : chrome.webview.postMessage("addComponent:"      + selection.toString()); break;
+        case 'openComponent'    : chrome.webview.postMessage("openComponent:"     + selection.toString()); break;
+        case 'gotoVaultFolder'  : chrome.webview.postMessage("gotoVaultFolder:"   + selection.toString()); break;
+        case 'gotoVaultFile'    : chrome.webview.postMessage("gotoVaultFile:"     + selection.toString()); break;
+        case 'gotoVaultItem'    : chrome.webview.postMessage("gotoVaultItem:"     + selection.toString()); break;
+        case 'gotoVaultECO'     : chrome.webview.postMessage("gotoVaultECO:"      + selection.toString()); break;
+        case 'selectComponent'  : chrome.webview.postMessage("selectComponent:"   + selection.toString()); break;
+        case 'isolateComponent' : chrome.webview.postMessage("isolateComponent:"  + selection.toString()); break;
+        // case 'addComponent'     : chrome.webview.postMessage("addComponent:"     + getNewMessageID(null) + selection.toString()); break;
+        // case 'openComponent'    : chrome.webview.postMessage("openComponent:"    + getNewMessageID(null) + selection.toString()); break;
+        // case 'gotoVaultFolder'  : chrome.webview.postMessage("gotoVaultFolder:"  + getNewMessageID(null) + selection.toString()); break;
+        // case 'gotoVaultFile'    : chrome.webview.postMessage("gotoVaultFile:"    + getNewMessageID(null) + selection.toString()); break;
+        // case 'gotoVaultItem'    : chrome.webview.postMessage("gotoVaultItem:"    + getNewMessageID(null) + selection.toString()); break;
+        // case 'gotoVaultECO'     : chrome.webview.postMessage("gotoVaultECO:"     + getNewMessageID(null) + selection.toString()); break;
+        // case 'selectComponent'  : chrome.webview.postMessage("selectComponent:"  + getNewMessageID(null) + selection.toString()); break;
+        // case 'isolateComponent' : chrome.webview.postMessage("isolateComponent:" + getNewMessageID(null) + selection.toString()); break;
 
     }
 
@@ -144,7 +229,7 @@ function getSelectionData(elements) {
 
         } else if(elemSelected.hasClass('vault-file')) {
 
-            selected = 'file;' + elemSelected.attr('data-id') + ';' + elemSelected.attr('data-name') + ';' + elemSelected.attr('data-folder');
+            selected = 'file;' + elemSelected.attr('data-id') + ';' + elemSelected.attr('data-name') + ';' + elemSelected.attr('data-file-id');
 
         } else if(elemSelected.hasClass('vault-item')) {
 
@@ -163,6 +248,16 @@ function getSelectionData(elements) {
     }
 
     return selection;
+
+}
+function getNewMessageID(elements) {
+
+    let now = new Date();
+    let id  = now.getTime();
+    
+    messagesAddin.push({ id : id, elements : elements });
+
+    return id + ';';
 
 }
 

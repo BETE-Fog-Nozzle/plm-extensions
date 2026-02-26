@@ -147,6 +147,7 @@ function genPDMTile(record, params) {
                 .attr('data-id', record.id)
                 .attr('data-name', record.name)
                 .attr('data-folder', record.parentFolderId)
+                .attr('data-file-id', record.file.id)
                 .attr('data-type', 'vault-file');
             break;
 
@@ -206,11 +207,25 @@ function genPDMTileFileVersion(file, params) {
     params.link         = file.url;
     params.title        = file.name + ' [' + file.revision + ']',
     params.subtitle     = subtitle
-    params.tileIcon     = 'icon-file';   
+    params.tileIcon     = 'icon-folder';   
     params.imageFile    = file.file.id + '-' + file.version;
     params.details      = 'data';
 
-    return genSingleTile(params);
+    let elemTile  = genSingleTile(params);
+
+    if(isDrawingFile(file)) elemTile.addClass('drawing'); else elemTile.addClass('model');
+
+    $.get('/vault/image-cache', { link : file.url }, function(response) {
+        if(response.status === 200) {
+            let elemParent = elemTile.find('.tile-image');
+            $('<img>').attr('src', '../' + response.data.url).on('load', function() {
+                elemParent.html('');
+                elemParent.append($(this));
+            });
+        }
+    });
+
+    return elemTile;
 
 }
 function genPDMTileItemVersion(item, params) {
@@ -229,14 +244,14 @@ function genPDMTileItemVersion(item, params) {
         image       : item.url,
         number      : params.number,
         tileNumber  : params.tileNumber,
-        tileIcon    : 'icon-item',
+        tileIcon    : 'icon-vault-item',
         title       : item.number + ' ' + item.title + ' [' + item.revision + ']',
         subtitle    : subtitle,
         imageFile   : item.item.id + '-' + item.version,
         details     : 'data'
     }
 
-    return  genSingleTile(tileParams);
+    return genSingleTile(tileParams);
 
 }
 function genPDMTileChangeOrder(eco, params) {
@@ -248,6 +263,20 @@ function genPDMTileChangeOrder(eco, params) {
 
     return genSingleTile(params);
 
+}
+function isDrawingFile(file) {
+
+    let suffix = file.name.split('.').pop();
+
+    switch(suffix) {
+
+        case 'dwg':
+        case 'idw':
+            return true;
+
+    }
+
+    return false;
 }
 function insertEntityTypeIcon(elemTile) {
 
@@ -466,7 +495,7 @@ function insertFileBOMData(id) {
         setFileBOMHeaders(id);
         insertNextFileBOMLevel(id, elemBOMTableBody, responses[0].data.results, settings.pdmFileBOM[id].link.split('/').pop(), 1, 1, selectedItems);
         enableBOMToggles(id);
-        updateBOMCounters(id);
+        // updateBOMCounters(id);
 
         if(settings.pdmFileBOM[id].collapsed) clickBOMCollapseAll($('#' + id + '-toolbar'));
 
@@ -729,7 +758,7 @@ function searchInFileBOM(id, elemInput) {
 
     }
 
-    updateBOMCounters(id);
+    // updateBOMCounters(id);
 
 }
 function toggleFileBOMItemActions(elemClicked) {

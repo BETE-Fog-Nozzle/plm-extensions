@@ -6,7 +6,6 @@ let records          = null;
 
 
 // let actions = [
-//     // { id : 'replace-owner', class : 'permisson-edit'   , title : 'Replace Owner', subtitle : "Update selected field values" },
 //     { id : 'bom-pin'      , class : 'permisson-edit'   , title : 'Change BOM Pin', subtitle : "Enables or disables the pin of all BOM children" },
 // ]
 
@@ -23,13 +22,15 @@ $(document).ready(function() {
             let requests = [
                 $.get('/plm/workspaces', {}),
                 $.get('/plm/users',      {}),
-                $.get('/plm/groups',     {})
+                $.get('/plm/groups',     {}),
+                $.get('/services/storage/folders', { path : 'imports' })
             ]
         
             getFeatureSettings('items', requests, function(responses) {
                 setWorkspaces(responses[0]);
                 setUserSelectors(responses[1]);
                 setGroupSelectors(responses[2]);
+                setStorageFolderSelectors(responses[3]);
             });
 
         }
@@ -50,6 +51,9 @@ function setUIEvents() {
         if($(this).attr('id') !== 'properties') {
             getMatches();
         }
+    });
+    $('.filter .value input').on('change', function() { 
+        getMatches();
     });
     $('.filter .inputs input').on('change', function() { 
         getMatches();
@@ -76,9 +80,11 @@ function setUIEvents() {
         switch(type) {
             case 'Date'             : $('#input-set-value').removeClass('hidden').attr('type', 'date'); break;
             case 'Check Box'        : $('#input-set-value').removeClass('hidden').attr('type', 'checkbox'); break;
-            case 'Single Selection' : $('#plist-set-value').removeClass('hidden'); setPicklistValues($('#plist-set-value'), picklist); break;
+            case 'Radio Button'     :
+            case 'Single Selection' : $('#plist-set-value').removeClass('hidden'); setPicklistValues($('#plist-set-value'), picklist, true); break;
             default                 : $('#input-set-value').removeClass('hidden').removeAttr('type'); break;
         }
+
     });
     $('#select-perform-transition').on('change', function() {
         let comments = $(this).children('option:selected').attr('data-comments');
@@ -87,6 +93,51 @@ function setUIEvents() {
             case 'OPTIONAL' : $('#input-perform-transition').removeClass('hidden'); break;
             default         : $('#input-perform-transition').addClass('hidden'); break;
         }
+    });
+    $('#select-import-folder').on('change', function() {
+
+        let value     = $(this).val();
+        let timestamp = new Date().getTime();
+        let params    = {
+            path      : 'imports/' + value,
+            timestamp : timestamp
+        }
+
+        if(value !== '--') {
+
+            $.get('/services/storage/contents', params, function(response) {
+                
+                if(timestamp !== params.timestamp) return;
+                
+                let message = 'There';
+                let countFilesRoot = response.contents.length - response.totalCountFolders;
+                let countFilesSubs = response.totalCountFiles - countFilesRoot;
+                
+                if(countFilesRoot === 0) message += ' are NO files ';
+                if(countFilesRoot === 1) message += ' is 1 file ';
+                if(countFilesRoot   > 1) message += ' are ' + countFilesRoot + ' files ';
+                
+                message += 'and ';
+                message += (response.totalCountFolders === 0) ? 'NO folders ' : response.totalCountFolders;
+
+                if(response.totalCountFolders === 1) message += ' folder ';
+                if(response.totalCountFolders   > 1) message += ' folders ';
+
+                message += 'with ';
+
+                if(countFilesSubs === 0) message += ' NO files ';
+                if(countFilesSubs === 1) message += ' 1 file ';
+                if(countFilesSubs   > 1) message += ' ' + countFilesSubs + ' files ';
+
+                message += 'to import';
+            
+                addLogSeparator();
+                addLogEntry('Selected folder ' + value, 'head');
+                addLogEntry(message);
+
+            });
+        }
+
     });
 
 
@@ -97,7 +148,7 @@ function setUIEvents() {
     });
     $('.toggle').click(function() {
         $(this).toggleClass('filled').toggleClass('icon-toggle-on').toggleClass('icon-toggle-off');
-    })
+    });
 
 
     // Header Toolbar Controls
@@ -194,6 +245,29 @@ function setGroupSelectors(response) {
     });
 
 }
+function setStorageFolderSelectors(response) {
+
+    $('.select-folder').each(function() {
+
+        if(typeof $(this).attr('data-empty-label') !== 'undefined') {
+
+            let label = $(this).attr('data-empty-label');
+
+            $('<option></option>').appendTo($(this))
+                .html(label)
+                .attr('value', '--');
+
+        }
+
+        for(let folder of response.folders) {
+            $('<option></option>').appendTo($(this))
+                .attr('value', folder)
+                .html(folder);
+        }
+
+    });
+
+}
 
 
 // When selecting workspace, enable matching filters
@@ -238,6 +312,7 @@ function updatefilters() {
 
     $('.select-user' ).each(function() { $(this).val('--'); });
     $('.select-group').each(function() { $(this).val('--'); });
+    $('#lifecycle').val('');
 
     Promise.all(requests).then(function(responses) {
 
@@ -392,6 +467,8 @@ function setLifecycleTransitionSelectors() {
 }
 function setScriptSelectors() {
 
+    let existing = [];
+
     $('.select-script').each(function() {
 
         let elemSelect = $(this);
@@ -405,9 +482,18 @@ function setScriptSelectors() {
 
         for(let script of wsConfig.scripts) {
 
-            $('<option></option>').appendTo(elemSelect)
-                .attr('value', script.__self__)
-                .html(script.uniqueName);
+            if(script.scriptBehaviorType === 'ON_DEMAND') {
+
+                if(!existing.includes(script.__self__)){
+
+                    $('<option></option>').appendTo(elemSelect)
+                        .attr('value', script.__self__)
+                        .html(script.uniqueName);
+
+                    existing.push(script.__self__);
+
+                }
+            }
 
         }
 
@@ -424,11 +510,13 @@ function setPropertySelectors() {
         let onlyCheckboxes = elemSelect.hasClass('field-type-check');
         let onlyEditable   = elemSelect.hasClass('field-editable');
         let label          = 'Select Field';
+        let value          = '--'
 
         if(typeof $(this).attr('data-empty-label') !== 'undefined') label = $(this).attr('data-empty-label');
+        if(typeof $(this).attr('data-with-descriptor') !== 'undefined') { label = 'DESCRIPTOR'; value = 'DESCRIPTOR'; }
 
         $('<option></option>').appendTo(elemSelect)
-            .attr('value', '--')
+            .attr('value', value)
             .html(label);
 
         for(let field of wsConfig.fields) {
@@ -467,7 +555,7 @@ function insertPropertyFilter() {
     for(let field of wsConfig.fields) {
 
         if(field.id === value) {
-            
+
             let elemFilter = $('<div></div>').appendTo($('#filter-properties'))
                 .addClass('property-filter')
                 .addClass('filter')
@@ -496,11 +584,12 @@ function insertPropertyFilter() {
 
             let elemSelect = $('<select></select').appendTo(elemValue)
                 .addClass('button')
+                .addClass('property-comparator')
                 .attr('id', 'fieldid-' + field.id)
                 .attr('data-type', field.type.title)
                 .attr('data-field-id', field.id)
                 .on('change', function() { 
-                    getMatches()
+                    getMatches();
                 });
                 
             $('<option></option>').appendTo(elemSelect)
@@ -551,6 +640,16 @@ function insertPropertyFilter() {
                         $('<input></input>').appendTo(elemInputs).attr('type', 'number').addClass('hidden').addClass('number').attr('placeholder', '# of days').on('change', function() { getMatches(); });
                         break;
 
+                    case 'Radio Button':
+                    case 'Single Select':
+                        $('<option></option>').appendTo(elemSelect).attr('value', 'radio-is').html('Is');  
+                        $('<option></option>').appendTo(elemSelect).attr('value', 'radio-in').html('Is Not'); 
+                        $('<option></option>').appendTo(elemSelect).attr('value', 'radio-co').html('Contains'); 
+                        $('<input></input>').appendTo(elemValue).attr('placeholder', 'Enter Text').addClass('inputs').addClass('hidden').on('change', function() { getMatches(); });
+                        let elemValues = $('<select></select>').appendTo(elemValue).addClass('inputs').addClass('hidden').on('change', function() { getMatches(); });
+                        setPicklistValues(elemValues, field.picklist, false); 
+                        break;
+
                 }
 
             }
@@ -566,6 +665,8 @@ function setFilters() {
     let elemSelect = $('#workspace-view');
     let value      = elemSelect.val();
     let groups     = elemSelect.closest('.group').nextAll();
+
+    stopped = false
 
     if(value === '--') {
 
@@ -633,16 +734,17 @@ function getSearchFilters() {
 
     let filters = [];
 
-    $('.filter select').each(function() {
+    $('.filter select.property-comparator').each(function() {
 
         let elemSelect  = $(this);
         let elemFilter  = $(this).closest('.filter');
         let filterId    = elemSelect.attr('id');
+        let filterType  = elemSelect.attr('data-type');
         let filterValue = elemSelect.children('option:selected').val();
 
         elemFilter.find('input').addClass('hidden');
         elemSelect.siblings('.inputs').addClass('hidden');
-        
+
         if(!isBlank(filterValue)) {
             if(filterValue !== '--') {
 
@@ -666,6 +768,15 @@ function getSearchFilters() {
                     case '+d': 
                         elemSelect.siblings('.inputs').removeClass('hidden');
                         elemFilter.find('input.number').removeClass('hidden'); 
+                        break;
+
+                    case 'radio-is':
+                    case 'radio-in':
+                        elemSelect.siblings('select.inputs').removeClass('hidden');
+                        break;
+
+                    case 'radio-co':
+                        elemSelect.siblings('input.inputs').removeClass('hidden');
                         break;
 
                     default:
@@ -749,11 +860,13 @@ function getSearchFilters() {
                         break;
 
                     default:
-                        if(elemSelect.attr('data-type') === 'Date') {
+                        if(filterType === 'Date') {
                             filter = getDateFilter(elemSelect, 0, filterValue);
                             if(filterValue === 'bw') {
                                 filters.push(getDateFilter(elemSelect, 0, 'br'));
                             }
+                        } else if(filterType === 'Radio Button') {
+                            filter = getPicklistFilter(elemSelect, filterValue);
                         } else {
                             filter = getPropertyFilter(elemSelect, filterValue);
                         }
@@ -768,6 +881,21 @@ function getSearchFilters() {
 
     });
 
+    if(wsConfig.type === '6') {
+
+        let valueLifecycle = $('#lifecycle').val();
+
+        if(!isBlank(valueLifecycle)) {
+
+            filters.push({ 
+                field        : 'LIFECYCLE_NAME',
+                type         : 10,
+                comparator   : 15,
+                value        : valueLifecycle
+            });
+        }
+    }
+    
     return filters;
 
 }
@@ -830,6 +958,31 @@ function getDateFilter(elemSelect, fieldType, filterValue) {
     return filter;
 
 }
+function getPicklistFilter(elemSelect, filterValue) {
+
+    let fieldId    = elemSelect.attr('data-field-id');
+    let elemInput  = elemSelect.siblings('input').first();
+    let elemOption = elemSelect.siblings('select').first();
+    let option     = elemOption.children('option:selected').html();   
+
+    let filter = {
+        field      : fieldId,
+        type       : 0,
+    };
+
+    switch(filterValue) {
+
+        case 'ib'       : filter.comparator = 20; filter.value = ''; break;
+        case 'nb'       : filter.comparator = 21; filter.value = ''; break;
+        case 'radio-is' : filter.comparator = 15; filter.value = option; break;
+        case 'radio-in' : filter.comparator =  5; filter.value = option; break;
+        case 'radio-co' : filter.comparator =  2; filter.value = elemInput.val(); break;
+
+    }
+
+    return filter;
+
+}
 function getPropertyFilter(elemSelect, filterValue) {
 
     let filter = {
@@ -864,9 +1017,9 @@ function getPropertyFilter(elemSelect, filterValue) {
 
 
 // Update picklist value selectors
-function setPicklistValues(elemSelect, link) {
-
-    elemSelect.children().remove();
+function setPicklistValues(elemSelect, link, clearExisting) {
+   
+    if(clearExisting) elemSelect.children().remove();
 
     let timestamp = new Date().getTime();
 
@@ -959,6 +1112,7 @@ function startProcessing() {
     run.errors       = [];
     run.ids          = [];
     run.storage      = '';
+    run.prev         = {};
 
     run.params = {
         pageNo    : 0,
@@ -995,7 +1149,21 @@ function startProcessing() {
         
     }
 
-    if(run.actionId === 'export-attachments') {
+    if(run.actionId === 'import-attachments') {
+
+        run.url          = '/services/storage/contents';
+        run.method       = 'get';
+        run.params.path  = 'imports/' + $('#select-import-folder').val();
+        // run.params.limit = 2;
+        run.prev = {
+            name : '',
+            link : ''
+        }
+
+        options.autoTune      = false;
+        options.requestsCount = 1;
+
+    } else if(run.actionId === 'export-attachments') {
         run.storage = '/storage/exports/' + $('#workspace').children('option:selected').html() + ' Files';
         addLogEntry('Files will be stored at  <a target="_blank" href="' + run.storage + '">' + $('#workspace').children('option:selected').html() + '</a>');
         addLogSpacer();
@@ -1021,7 +1189,8 @@ function getNextRecords() {
         success : function(response) {
 
             if(run.total < 0) {
-                run.total = response.data.totalResultCount || response.data.total;
+                if(run.actionId === 'import-attachments') run.total = response.totalCountFiles;
+                else run.total = response.data.totalResultCount || response.data.total;
                 $('#progress').removeClass('hidden');
             }
 
@@ -1033,7 +1202,11 @@ function getNextRecords() {
             if(records.length === 0) {
                 endProcessing();
             } else {
-                if(records.length === 1) addLogEntry('Found next record to process');
+                if(run.actionId === 'import-attachments') {
+                    let record = records[0];
+                    if(record.type == 'file') addLogEntry('Next file : ' + record.name);
+                    else addLogEntry('Next file : ' + record.name + '/' + record.files[0].name);
+                } else if(records.length === 1) addLogEntry('Found next record to process');
                 else addLogEntry('Found next ' + records.length + ' records to process');
                 processNextRecords();
             }
@@ -1043,6 +1216,12 @@ function getNextRecords() {
 
 }
 function setRecordsData(response) {
+
+    if(run.actionId === 'import-attachments') {
+        records = response.contents;
+        if(response.totalCountFiles === 0) records = [];
+        return;
+    }
 
     records = response.data.row || response.data.items;
 
@@ -1128,7 +1307,7 @@ function processNextRecords() {
     
                 }
 
-                if(records[0].includeBOM !== '--') {
+                if((typeof records[0].includeBOM !== 'undefined') && (records[0].includeBOM !== '--')){
 
                     getBOMRecords();
 
@@ -1157,32 +1336,43 @@ function genRequests(limit) {
 
     for(let i = 0; i < limit; i++) {
 
+        
         let record = records[i];
+        let params = {};
 
-        let params = {
-            link       : record.link,
-            descriptor : record.descriptor,
-            sections   : []
+        if(run.actionId !== 'import-attachments') {
+            
+            params.link       = record.link;
+            params.descriptor = record.descriptor;
+            params.sections   = [];
+            params.fields     = [];
+            
+            let message = (options.testRun) ? 'Would process' : 'Processing';
+            let link    = genItemURL({ link : record.link });
+
+            addLogEntry(message + ' <a target="_blank" href="' + link + '">' + params.descriptor + '</a>', 'notice');
+
         }
-
-        let link    = genItemURL({ link : params.link });
-        let message = (options.testRun) ? 'Would process' : 'Processing';
-
-        addLogEntry(message + ' <a target="_blank" href="' + link + '">' + params.descriptor + '</a>', 'notice');
 
         if((options.testRun) || stopped) {
 
         } else {
 
-                   if(run.actionId === 'store-dmsid') {
+            if(run.actionId === 'store-dmsid') {
 
                 let fieldId = $('#select-store-dmsid').val();
                 let value   = getRecordFieldValue(record, fieldId, '');
+
+                params.sections = wsConfig.sections;
                 
                 if(value != record.dmsId) {
-                    addFieldToPayload(params.sections, wsConfig.sections, null, fieldId, record.dmsId);
+                    params.fields.push({
+                        fieldId : fieldId,
+                        value   : record.dmsId
+                    }); 
                     requests.push($.post('/plm/edit', params));
                 } else {
+                    let link = genItemURL({ link : record.link });
                     addLogEntry('Right dmsId is already set for <a target="_blank" href="' + link + '">' + params.descriptor + '</a>', 'notice');
                 }
             
@@ -1193,11 +1383,19 @@ function genRequests(limit) {
 
                 if(type === 'Check Box') {
                     value = $('#input-set-value').is(":checked")
+                } else if(type === 'Radio Button') {
+                    value = { link : $('#plist-set-value').val() };
                 } else if(type === 'Single Selection') {
                     value = { link : $('#plist-set-value').val() };
                 }
 
-                addFieldToPayload(params.sections, wsConfig.sections, null, $('#select-set-value').val(), value, false);
+                params.sections = wsConfig.sections;
+
+                params.fields.push({
+                    fieldId : $('#select-set-value').val(),
+                    value   : value
+                }); 
+                
                 requests.push($.post('/plm/edit', params));
 
             } else if(run.actionId === 'copy-value') {
@@ -1206,7 +1404,13 @@ function genRequests(limit) {
 
             } else if(run.actionId === 'clear-field') {
 
-                addFieldToPayload(params.sections, wsConfig.sections, null, $('#select-clear-field').val(), null, false);
+                params.sections = wsConfig.sections;
+
+                params.fields.push({
+                    fieldId : $('#select-clear-field').val(),
+                    value   : null
+                });
+
                 requests.push($.post('/plm/edit', params));
 
             } else if(run.actionId === 'set-owner') {
@@ -1240,9 +1444,40 @@ function genRequests(limit) {
 
                 requests.push($.post('/plm/clear-owners', params));
 
+            } else if(run.actionId === 'import-attachments') {
+
+                params.wsId              = wsConfig.link.split('/').pop();
+                params.fieldId           = $('#select-import-field').val();
+                params.includeSuffix     = $('#select-import-suffix').val();
+                params.attachmentsFolder = $('#input-import-folder-name').val();
+                params.onFailure         = $('#select-import-on-failure').val();
+                params.onSuccess         = $('#select-import-on-success').val();
+                params.updateExisting    = ($('#select-import-update').val() === 'y');
+                params.fieldValue        = record.name;
+                params.path              = run.params.path;
+                params.link              = '';
+                params.release           = (wsConfig.type === '6') ? $('#select-import-release').val() : '';
+
+                if(record.type == 'folder') {
+                    params.fileName   = record.files[0].name;
+                    params.folderName = record.name;
+
+                } else {
+                    params.fileName = record.name;
+                }
+
+                if(!isBlank(run.prev.title)) {
+                    if(run.prev.title === params.fieldValue) {
+                        params.link  = run.prev.link;
+                        params.title = run.prev.title;
+                    }
+                }
+
+                requests.push($.post('/plm/import-attachment', params));
+
             } else if(run.actionId === 'export-attachments') {
 
-                params.folder       = $('#workspace').children('option:selected').html() + ' Files';
+                params.subFolder    = $('#workspace').children('option:selected').html() + ' Files';
                 params.includeDMSID = $('#select-export-attachments-dmsid').val().toLowerCase();
                 params.filenamesIn  = $('#input-export-attachments-in').val().toLowerCase();
                 params.filenamesEx  = $('#input-export-attachments-ex').val().toLowerCase();
@@ -1258,21 +1493,19 @@ function genRequests(limit) {
                 params.transition = $('#select-perform-transition').val();
                 let elemComment = $('#input-perform-transition');
                 if(!elemComment.hasClass('hidden')) params.comment = elemComment.val();
-                requests.push($.get('/plm/transition', params));
+                requests.push($.post('/plm/transition', params));
             } else if(run.actionId === 'perform-lifecycle-transition') {
 
                 params.transition = $('#select-perform-lifecycle-transition').val();
                 let elemRevision = $('#input-perform-lifecycle-transition');
                 if(!elemRevision.hasClass('hidden')) params.revision = elemRevision.val();
 
-                console.log(params);
-
                 requests.push($.get('/plm/lifecycle-transition', params));
 
             } else if(run.actionId === 'run-script') {
 
                 params.script = $('#select-run-script').val();
-                requests.push($.get('/plm/run-item-script', params));
+                requests.push($.post('/plm/run-item-script', params));
 
             } else if(run.actionId === 'archive') {
 
@@ -1306,7 +1539,8 @@ function genUpdateRequests(responses) {
         let params = {
             link       : response.params.link,
             descriptor : response.params.descriptor,
-            sections   : []
+            sections   : wsConfig.sections,
+            fields     : []
         }
 
         if(run.actionId === 'copy-value') {
@@ -1314,15 +1548,16 @@ function genUpdateRequests(responses) {
             let value = getSectionFieldValue(response.data.sections, $('#select-copy-from').val(), '');
             let fieldId = $('#select-copy-to').val();
 
-            addFieldToPayload(params.sections, wsConfig.sections, null, fieldId, value, false);
+            params.fields.push({
+                fieldId : fieldId,
+                value   : value
+            }); 
 
             requests.push($.post('/plm/edit', params));
                 
         } else if(run.actionId === 'delete-attachments') {
 
             if(response.data.length > 0) {
-
-                params.fileIds = [];
 
                 for(let attachment of response.data) {
 
@@ -1365,7 +1600,35 @@ function genCompletionRequests(limit, responses) {
 
         for(let response of responses) {
 
-            if(record.link === response.params.link) {
+            if(response.url.indexOf('/import-attachment') === 0) {
+
+                if(response.error) {
+
+                    success = false;
+
+                    let urlBase = document.location.href.split('/data')[0];
+                    let link    = urlBase + '/storage/' + run.params.path + '/__failed/' + record;
+
+                    addLogEntry('Error while processing file <a target="_blank" href="' + link + '">' + record + '</a>', 'error');
+                    if(response.message !== '') addLogEntry('Error message: "' + response.message + '"', 'indent');
+
+                } else {
+
+                    let link = genItemURL({ link : response.data.link });
+
+                    run.prev.link  = response.data.link;
+                    run.prev.title = response.data.title;
+                    record.link    = response.data.link;
+
+                    if(response.data.action == 'exists') {
+                        addLogEntry('Skipped update of existing file of <a target="_blank" href="' + link + '">' + response.data.title + '</a>', 'notice');
+                    } else {
+                        addLogEntry('Uploaded to <a target="_blank" href="' + link + '">' + response.data.title + '</a>', 'success');
+                    }
+
+                }
+
+            } else if(record.link === response.params.link) {
 
                 if(response.error) {
 

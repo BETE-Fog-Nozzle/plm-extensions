@@ -17,20 +17,21 @@ let wsConfig        = {
     tableauLink           : '',
     markupsImageFieldsPrefix     : 'MARKUP_'
 }
-let wsConfigBrowser = {
-    id       : '95',
-    viewName : 'Product Browser',
-    tableau  : ''
-}
 
 
 $(document).ready(function() {
 
-    for(let profile of config.dashboard) {
+    for(let profile of config) {
 
-        if(wsId === profile.wsId.toString()) {
+        let workspaceName = profile.workspace;
 
-            wsConfig.id              = profile.wsId.toString();
+        profile.workspaceId   = common.workspaceIds[workspaceName];
+    
+        if(urlParameters.wsid == profile.workspaceId) {
+
+            wsConfig.id              = profile.workspaceId;
+            wsConfig.newHeader       = profile.newHeader || 'Initiate New Process';
+            wsConfig.newMessage      = profile.newMessage || 'You encountered an issue? Please provide a few details below and let us fix the problem. You can provide more details and also upload files in the next step.';
             wsConfig.className       = profile.className;
             wsConfig.contents        = profile.contents;
             wsConfig.progress        = profile.progress;
@@ -43,6 +44,8 @@ $(document).ready(function() {
             if(!isBlank(profile.workflowHistory)) wsConfig.workflowHistory = profile.workflowHistory;
             if(!isBlank(profile.markupsImageFieldsPrefix)) wsConfig.markupsImageFieldsPrefix = profile.markupsImageFieldsPrefix;
 
+            $('#main').addClass(wsConfig.className);
+
         }
 
     }
@@ -52,23 +55,25 @@ $(document).ready(function() {
     if(isBlank(wsConfig.id)) {
 
         $('body').addClass('no-profile');
-        sortArray(config.dashboard, 'title');
+        sortArray(config, 'title');
 
-        for(let profile of config.dashboard) {
+        for(let profile of config) {
 
             let icon = (isBlank(profile.icon)) ? 'icon-workflow' : profile.icon;
         
             let elemProfile = $('<div></div>').appendTo($('.screen-list'))
                 .addClass('screen-list-tile')
                 .addClass('surface-level-4')
-                .attr('data-id', profile.wsId)
+                .attr('data-id', profile.workspaceId)
                 .click(function() {
 
                     let location = document.location.href.split('?');
                     let params   = (location.length === 1) ? [] : location[1].split('&');
                     let url      = location [0] + '?'
 
-                    url += 'wsId='+$(this).attr('data-id');
+                    url += 'wsId=' + $(this).attr('data-id');
+
+                    console.log(url);
 
                     for(let param of params) {
                         if(param.toLowerCase().indexOf('wsid') < 0) url += '&' + param;
@@ -92,17 +97,20 @@ $(document).ready(function() {
     } else {
 
         $('#header-title').html(title);
+        $('#new-header').html(wsConfig.newHeader);
+        $('#new-message').html(wsConfig.newMessage);
 
         document.title = title;
 
         appendNoDataFound('list');
-
         appendOverlay(false);
 
         setUIEvents();
         setStatusColumns();
         setCalendars();
         setChart();
+
+        if(!isBlank(urlParameters.link)) openItem(urlParameters.link);
 
         getInitialData();
 
@@ -133,7 +141,7 @@ function setStatusColumns() {
 
         $('<div></div>').appendTo(elemState)
             .html(state.label)
-            .css('background-color', state.color)
+            .css('background-color', colors[state.color])
             .addClass('progress-title');
         
         $('<div></div>').appendTo(elemState)
@@ -144,7 +152,7 @@ function setStatusColumns() {
             .addClass('l')
             .attr('data-states', state.states)
             .attr('data-label', state.label)
-            .attr('data-color', state.color);
+            .attr('data-color', colors[state.color]);
 
     }
 
@@ -184,8 +192,8 @@ function setChart() {
         data: {
             labels: [],
             datasets: [
-                { data: [], backgroundColor: config.colors.red,    label : 'Age (days since process creation)' },
-                { data: [], backgroundColor: config.colors.yellow, label : 'Last Update (days since last modification)' }
+                { data: [], backgroundColor: colors.red,    label : 'Age (days since process creation)' },
+                { data: [], backgroundColor: colors.yellow, label : 'Last Update (days since last modification)' }
             ]
         },
         options: {
@@ -228,10 +236,10 @@ function setSelectedView() {
 function getInitialData() {
 
     let requests = [
-        $.get('/plm/sections'   , { wsId : wsConfig.id, useCache : true }),
-        $.get('/plm/fields'     , { wsId : wsConfig.id, useCache : true }),
-        $.get('/plm/tableaus'   , { wsId : wsConfig.id, useCache : true }),
-        $.get('/plm/permissions', { wsId : wsConfig.id, useCache : true }),
+        $.get('/plm/sections'   , { wsId : wsConfig.id, useCache : true  }),
+        $.get('/plm/fields'     , { wsId : wsConfig.id, useCache : true  }),
+        $.get('/plm/tableaus'   , { wsId : wsConfig.id, useCache : false }),
+        $.get('/plm/permissions', { wsId : wsConfig.id, useCache : true  }),
     ];
 
     Promise.all(requests).then(function(responses) {
@@ -243,6 +251,7 @@ function getInitialData() {
         for(let tableau of responses[2].data) {
             if(tableau.title === wsConfig.tableauName) {
                 wsConfig.tableauLink = tableau.link;
+                break;
             }
         }
         
@@ -288,9 +297,9 @@ function getInitialData() {
             }
 
             if(!isBlank(wsConfig.fieldIdSubtitle)) params.columns.push(wsConfig.fieldIdSubtitle);
-
+            
             $.post('/plm/tableau-add', params, function() {
-                $.get('/plm/tableaus', { 'wsId' : wsConfig.id }, function(response) {
+                $.get('/plm/tableaus', { wsId : wsConfig.id }, function(response) {
                     for(let tableau of response.data) {
                         if(tableau.title === wsConfig.tableauName) {
                             wsConfig.tableauLink = tableau.link;
@@ -345,8 +354,8 @@ function getProcesses() {
             let dateCreated;
 
             appendTileDetails(elemTile, [
-                ['with-icon icon-start'  , 'Created on ' + item.fields[1].value      , false],
-                ['with-icon icon-calendar', 'Last update on ' + item.fields[2].value  , false]
+                ['with-icon icon-start'   , 'Created on '     + item.fields[1].value, false],
+                ['with-icon icon-calendar', 'Last update on ' + item.fields[2].value, false]
             ]);
 
             if(!isBlank(valueCreated)) {
@@ -419,7 +428,7 @@ function getProcesses() {
 
         setSelectedView();
 
-        $('.tile').click(function() { openItem($(this).attr('data-link')); });
+        $('#main').find('.tile').click(function() { openItem($(this).attr('data-link')); });
         $('.calendar-day-current').click();
 
         chart.update();
@@ -496,6 +505,15 @@ function selectCalendarWeek(elemClicked) {
 // Show selected process in main window
 function openItem(link) {
 
+    $('#overlay').show(); 
+
+    $.get('/plm/descriptor', { link : link }, function(response) {
+        document.title = response.data;
+        let split = link.split('/')
+        window.history.replaceState(null, null, '/dashboard?wsid=' + split[4] + '&dmsid=' + split[6] + '&theme=' + theme);    
+        $('#overlay').hide();        
+    });
+
     insertItemSummary(link, {
         bookmark        : true,
         className       : wsConfig.className,
@@ -504,8 +522,13 @@ function openItem(link) {
         reload          : true,
         layout          : 'dashboard',
         statesColors    : wsConfig.progress,
-        surfaceLevel    : '3',
-        workflowActions : true
+        surfaceLevel    : '1',
+        workflowActions : true,
+        onClickClose    : function(id, link) { 
+            document.title = title;
+            let split = link.split('/')
+            window.history.replaceState(null, null, '/dashboard?wsid=' + split[4] + '&theme=' + theme);   
+        }
     });
 
 

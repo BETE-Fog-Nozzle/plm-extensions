@@ -22,6 +22,30 @@
     overflow-y      : auto;
     width           : var(--width-side);
 }
+#toggle {
+    border-radius : 50%;
+    font-size     : 32px;
+    position      : absolute;
+    top           : 78px;
+    left          : calc(var(--width-side) + 160px - 22px);
+    z-index       : 2;
+}
+#layout {
+    border-radius : 50%;
+    font-size     : 28px;
+    position      : absolute;
+    top           : 128px;
+    left          : calc(var(--width-side) + 160px - 22px);
+    z-index       : 2;
+}
+#start {
+    border-radius : 50%;
+    font-size     : 28px;
+    position      : absolute;
+    top           : 178px;
+    left          : calc(var(--width-side) + 160px - 22px);
+    z-index       : 2;
+}
 #main {
     border-width    : 60px 60px;
     position        : absolute;
@@ -31,6 +55,59 @@
     left            : 0px;
     overflow-y      : auto;
     left            : calc(var(--width-side) + 160px);
+}
+
+body > div { transition : none; }
+
+body.no-side-panel #toggle,
+body.no-side-panel #layout,
+body.no-side-panel #start  { left : 12px; }
+body.no-side-panel #side   { left : calc(34px - var(--width-side) - 160px); }
+body.no-side-panel #main   { left : 34px; }
+
+body.layout-tiles-list .tiles-group-list {
+    flex-wrap      : unset;
+    flex-direction : column;
+    gap            : 2px;
+}
+body.layout-tiles-list .tile.min {
+    flex-direction : row;
+    height         : 104px;
+    min-width      : unset;
+    width          : unset;
+}
+body.layout-tiles-list .tile.min .tile-image {
+    min-width : 184px;
+    width     : 184px;    
+}
+body.layout-tiles-list .tile.min .tile-title {
+    font-size   : 18px;
+    line-height : 24px;
+}
+body.layout-tiles-list .tile.min .tile-details {
+    gap    : 2px;
+    margin : 12px 12px 12px 24px; 
+    width  : 100%;
+}
+body.layout-tiles-list .tile.min .tile-subtitle {
+    height        : 22px;
+    overflow      : hidden;
+    text-overflow : ellipsis;
+    white-space   : nowrap !important;
+}
+body.layout-tiles-list .tile.min .tile-access {
+    max-height : 38px;
+    min-height : 38px;
+    height     : 38px;
+}
+body.layout-tiles-list .tile.min .tile-access .tile-endpoint {
+    height      : 30px;
+    line-height : 30px;    
+}
+body.layout-tiles-list .tile.min .tile-access .button {
+    height      : 28px;
+    line-height : 28px;
+    padding     : 0px 16px;
 }
 
 
@@ -44,16 +121,32 @@
     margin-bottom   : 12px;
     padding         : 18px; 
 }
+#side p {
+    margin : 20px 0px;
+}
 .side-toolbar {
     display         : flex;
     flex-direction  : column;
     gap             : 6px;
 }
+#side-toolbar {
+    display : grid;
+    gap     : 4px;
+    grid-template-columns: 1fr 1fr;
+}
+#side-toolbar > div {
+    height      : 40px;
+    padding     : 6px 12px;
+    white-space : normal;
+}
+#side-toolbar > div > span {
+    display : block;
+    color   : var(--color-blue-500);
+}
 #themes {
     display         : flex;
     justify-content : space-between;
-    margin-bottom   : 20px;
-    padding-top     : 20px;
+    padding-top     : 0px;
 }
 #themes span {
     line-height   : 38px;
@@ -98,7 +191,7 @@
 .tiles-group-list {
     display     : flex;
     flex-wrap   : wrap;
-    gap         : 20px;
+    gap         : 8px;
     padding-top : 10px;
 }
 
@@ -107,24 +200,24 @@
 /*  TILES */
 /* ----------------------------------------------------------------------------- */
 .tile {
-    background      : var(--color-surface-level-3);
-    display         : flex;
-    flex-direction  : column;
-    height          : 460px;
+    background     : var(--color-surface-level-2);
+    display        : flex;
+    flex-direction : column;
+    height         : 420px;
 }
 .tile-image {
-    max-height  : 226px;
-    min-height  : 226px;
-    height      : 226px;
+    max-height : 192px;
+    min-height : 192px;
+    height     : 192px;
 }
 .tile,
 .tile-image {
-    min-width : 400px;
-    width     : 400px;
+    min-width : 340px;
+    width     : 340px;
 }
 .tile-details {
     gap     : 10px;
-    margin  : 20px 40px;
+    margin  : 16px 28px;
 }
 .tile-title { 
     font-size   : 20px;
@@ -133,7 +226,7 @@
 }
 .tile-subtitle {     
     font-size   : 12px;
-    height      : 80px;
+    height      : 90px;
     line-height : 16px;
     white-space : wrap !important;
 }
@@ -183,6 +276,10 @@
 .tile.max .tile-image {
     border              : 30px solid var(--color-surface-level-2);
     border-left-width   : 60px;
+    max-width           : 400px;
+    min-width           : 400px;
+    max-height          : 226px;
+    min-height          : 226px;
     position            : absolute;
     top                 : 0px;
     left                : 0px;
@@ -224,6 +321,7 @@
 
 h2 {
     border-left  : 10px solid var(--color-surface-level-3);
+    margin-top   : 42px;
     margin-left  : 2px;
     padding-left : 14px;
 }
@@ -250,6 +348,9 @@ h2 {
     bottom      : 0px;
     left        : calc(50% - 600px);
 }
+.instructions::-webkit-scrollbar {
+    display: none;
+}
 .instructions img {
     display     : block;
     margin      : 20px 0px;
@@ -264,10 +365,11 @@ h2 {
     width           : calc(100% - 600px);
 }
 .tile.max h1 {
-    margin-top : 40px;
+    margin-top : 52px;
 }
 .tile.max h3 {
-    margin-top : 30px;
+    font-weight : 800;
+    margin-top  : 30px;
 }
 .tile.max h1:first-of-type {
     margin-top : 0px;
@@ -313,7 +415,7 @@ th {
     text-align : left;
 }
 td {
-    border-bottom : 1px solid #eee;
+    border-bottom : 1px solid var(--color-surface-level-3);
 }
 th, td {
     padding : 5px 10px;
@@ -353,13 +455,6 @@ a:hover {
 
 
 
-/*  TENANT */
-/* ----------------------------------------------------------------------------- */
-#tenant-name {
-    color       : var(--color-blue-500);
-}
-
-
 /*  DOCS */
 /* ----------------------------------------------------------------------------- */
 #docs-name {
@@ -370,9 +465,6 @@ a:hover {
 
 /*  CHANGE LOG */
 /* ----------------------------------------------------------------------------- */
-#version-name {
-    color       : var(--color-blue-500);
-}
 #framework-changes { 
     background  : var(--color-surface-level-2);
     color       : var(--color-font);

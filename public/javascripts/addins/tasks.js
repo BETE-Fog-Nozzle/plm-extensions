@@ -7,15 +7,15 @@ $(document).ready(function() {
     appendOverlay();
 
     insertMOW({
-        headerLabel       : config.addins.tasks.headerLabelTasks,
+        headerLabel       : config.tasks.headerLabelTasks,
         number            : true,
         filterByDueDate   : true,
         filterByWorkspace : true,
         reload            : true,
         search            : false,
         contentSize       : 'xxs',
-        columnsEx         : config.addins.tasks.columnsExTasks,
-        workspacesIn      : config.addins.tasks.workspacesInTasks,
+        fieldsEx          : config.tasks.columnsExTasks,
+        workspacesIn      : config.tasks.workspacesInTasks,
         onClickItem : function(elemClicked) { openTask(elemClicked); }
     });
 
@@ -36,22 +36,16 @@ function setUIEvents() {
 
         getActiveDocument($(this).attr('data-context-descriptor')).then(partNumber => {
         
-            // let partNumber = 'CAD_30000096';
-
-            console.log(partNumber);
-
             let params = {
                 'wsId'  : config.search.wsId,
                 'limit' : 1,
                 'query' : partNumber
             }        
 
-            $.get('/plm/search-descriptor', params, function(response) {
+            $.post('/plm/search-descriptor', params, function(response) {
             
                 if(response.data.items.length > 0) {
 
-                    console.log(response.data.items[0]);
-        
                     let link = response.data.items[0].__self__;
 
                     // let elemTile = genTile(link, '', '', 'view_in_ar', response.data.items[0].descriptor);
@@ -92,11 +86,7 @@ function setUIEvents() {
             items.push($(this).attr('data-link'));
         });
 
-        console.log(items);
-
-        $.get('/plm/add-managed-items', { 'link' : $('#task').attr('data-link'), 'items' : items }, function(response) {
-            console.log(response);
-            // $('.is-selected').click();
+        $.post('/plm/add-managed-items', { link : $('#task').attr('data-link'), items : items }, function(response) {
             insertManagedItems($('#task').attr('data-link'), 'managed-items', 'settings');
         });
 
@@ -122,7 +112,7 @@ function openTask(elemClicked) {
             type   : 'details', 
             params : { 
                 id              : 'task-details', 
-                expandSections  : config.addins.tasks.expandSectionsTask, 
+                expandSections  : config.tasks.expandSectionsTask, 
                 editable        : true,
                 toggles         : true,
                 afterCompletion : function(id) { setPicklistActions(id); }
@@ -145,6 +135,14 @@ function openTask(elemClicked) {
                 afterCompletion : function(id) { setManagedItemsActions(id); }
             } 
         },{ 
+            type   : 'grid', 
+            params : { 
+                id          : 'task-grid',
+                contentSize : 's',
+                editable    : true,
+                multiSelect : true
+            } 
+        },{ 
             type      : 'workflow-history', 
             params : { 
                 id     : 'task-workflow-history'
@@ -162,7 +160,7 @@ function openTask(elemClicked) {
 }
 function setPicklistActions(id) {
     
-    $('.field-multi-picklist-item').each(function() {
+    $('.picklist-selected-item').each(function() {
         
         let elemFieldItem  = $(this);
         let fieldItemLink  = elemFieldItem.attr('data-link');
@@ -174,13 +172,13 @@ function setPicklistActions(id) {
             let wsId       = fieldItemLink.split('/')[4];
             let elemParent = elemFieldItem.parent();
 
-            if(wsId == config.items.wsId) {
+            if(wsId == config.items.workspaceId) {
 
                 elemParent.addClass('tiles').addClass('list').addClass('xxs').addClass('surface-level-2');
 
                 $.get('/plm/details', { link : fieldItemLink} , function(response) {
 
-                    let partNumber  = getSectionFieldValue(response.data.sections, config.items.fieldIdNumber, '');
+                    let partNumber  = getSectionFieldValue(response.data.sections, common.workspaces.items.fieldIdNumber, '');
                     let pdmFileName = getSectionFieldValue(response.data.sections, 'PRIMARY_FILE_NAME', '');
                     let pdmLocation = getSectionFieldValue(response.data.sections, 'PDM_LOCATION', '');
 
@@ -242,21 +240,19 @@ function addSelected() {
         $('#managed-items-processing').show();
 
         let requests = [
-            $.get('/plm/search-descriptor'  , { wsId : config.items.wsId, limit : 1, query : partNumber }),
-            $.get('/plm/sections'           , { wsId : config.items.wsId }  ),
+            $.post('/plm/search-descriptor' , { wsId : config.items.workspaceId, limit : 1, query : partNumber }),
+            $.get('/plm/sections'           , { wsId : config.items.workspaceId }  ),
             $.get('/vault/search-items'     , { query : partNumber }),
         ]
 
         Promise.all(requests).then(function(responses) {
-
-            console.log(responses);
 
             let plmItems    = responses[0].data.items;
             let plmSections = responses[1].data;
             let vaultItems  = responses[2].data.results;
             let params      = { sections : [] }
 
-            addFieldToPayload(params.sections, plmSections, null, config.items.fieldIdNumber, partNumber);
+            addFieldToPayload(params.sections, plmSections, null, common.workspaces.items.fieldIdNumber, partNumber);
             
             if(vaultItems.length > 0) {
 
@@ -271,17 +267,15 @@ function addSelected() {
 
             }
 
-            console.log(params);
-        
             if(plmItems.length === 0) {
 
-                params.wsId = config.items.wsId;
+                params.wsId = config.items.workspaceId;
 
                 $.post('/plm/create', params, function(response) {
 
                     let link = response.data.split('.autodeskplm360.net')[1];
 
-                    $.get('/plm/add-managed-items', { link : linkTask, items : [link] }, function(response) {
+                    $.post('/plm/add-managed-items', { link : linkTask, items : [link] }, function(response) {
                         insertManagedItems(linkTask, {
                             layout      : 'list',
                             headerLabel : ''
@@ -296,12 +290,10 @@ function addSelected() {
 
                 let requestsUpdate = [
                     $.post('/plm/edit', params),
-                    $.get('/plm/add-managed-items', { link : linkTask, items : [params.link] })
+                    $.post('/plm/add-managed-items', { link : linkTask, items : [params.link] })
                 ]
 
                 Promise.all(requestsUpdate).then(function(responses) {
-
-                    console.log(responses);
 
                     insertManagedItems(linkTask, {
                         layout      : 'list',

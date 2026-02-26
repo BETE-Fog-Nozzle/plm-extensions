@@ -15,7 +15,7 @@ $(document).ready(function() {
             'wildcard'  : false
         }
 
-        $.get('/plm/search-descriptor', params, function(response) {
+        $.post('/plm/search-descriptor', params, function(response) {
             
             $('.processing').hide();
             $('#search-message').hide();
@@ -50,7 +50,7 @@ function setUIEvents() {
 
     $('#create-action').click(function() {
         $('#create-processing').show();
-        insertCreateForm(config.search.wsId, 'create', true);
+        // insertCreateForm(config.search.wsId, 'create', true);
         $('#create-title').html($(this).html());
         $('#search-screen').hide();
         $('#create-screen').show();

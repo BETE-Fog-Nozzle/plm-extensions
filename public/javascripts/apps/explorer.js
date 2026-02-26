@@ -4,9 +4,9 @@ let now                 = new Date();
 let bomItems            = [];
 let editableFields      = [];
 let indexSelected       = -1;
-let wsItems             = { id : wsId, sections : [], fields : [], viewId : '' };
-let wsProblemReports    = { id : ''  , sections : [], fields : [] };
-let wsSupplierPackages  = { id : ''  , sections : [], fields : [] };
+let wsItems             = { id : '', sections : [], fields : [], viewId : '' };
+let wsProblemReports    = { id : '', sections : [], fields : [] };
+let wsSupplierPackages  = { id : '', sections : [], fields : [] };
 let kpis                = [];
 let rollUpFields        = [];
 
@@ -18,12 +18,10 @@ let paramsDetails = {
     expandSections  : ['Basic'],
     fieldsEx        : ['ACTIONS'],
     toggles         : true
-
 }
 let paramsAttachments = { 
     editable      : true,
     layout        : 'row',
-    contentSize   : 'm', 
     reload        : false,
     extensionsEx  : ['.dwf', '.dwfx'],
     filterByType  : true,
@@ -31,30 +29,30 @@ let paramsAttachments = {
     singleToolbar : 'controls'
 }
 let paramsProcesses = { 
-    headerLabel         : 'Processes', 
-    filterByWorkspace   : true,
-    openInPLM           : true,
-    reload              : false,
-    editable            : true,
-    openOnDblClick      : true,
-    contentSize         : 'm',
-    createWSID          : '' ,
-    fieldIdMarkup       : ''
+    headerLabel       : 'Processes', 
+    filterByWorkspace : true,
+    openInPLM         : true,
+    reload            : false,
+    editable          : true,
+    openOnDblClick    : true,
+    createWSID        : '' ,
+    fieldIdMarkup     : ''
 }
 let context = {}
  
 
 $(document).ready(function() {
-    
-    wsProblemReports.id             = config.problemReports.wsId;
-    wsSupplierPackages.id           = config.explorer.wsIdSupplierPackages;
-    paramsProcesses.createWSID      = config.problemReports.wsId;
-    paramsProcesses.fieldIdMarkup   = config.explorer.fieldIdPRImage;
-    rollUpFields                    = config.explorer.rollUpFields;
-    paramsProcesses.createContext   = { fieldId : config.explorer.fieldIdPRContext };
 
-    let link = '/api/v3/workspaces/' + wsId + '/items/' + dmsId;
-    
+    wsProblemReports.id           = config.problemReports.workspaceId   || common.workspaceIds.problemReports;
+    wsSupplierPackages.id         = config.supplierPackages.workspaceId || common.workspaceIds.supplierPackages;
+    paramsProcesses.createWSID    = config.problemReports.workspaceId   || common.workspaceIds.problemReports;
+    paramsProcesses.fieldIdMarkup = config.fieldIdPRImage;
+    rollUpFields                  = config.rollUpFields;
+    paramsProcesses.createContext = { fieldId : config.fieldIdPRContext };
+    urlParameters.bom             = urlParameters.link;
+
+    let requests = [];
+
     appendProcessing('dashboard', false);
     appendProcessing('bom', false);
     appendProcessing('details', false);
@@ -62,9 +60,18 @@ $(document).ready(function() {
     appendOverlay(false);
     insertMenu();
 
-    if(isBlank(wsItems.id)) wsItems.id = config.items.wsId;
-
-    getFeatureSettings('explorer', [], function(responses) {
+    if(!isBlank(urlParameters.fieldidebom)) requests.push($.get('/plm/details', { link : urlParameters.link}));
+    
+    getFeatureSettings('explorer', requests, function(responses) {
+        
+        if(!isBlank(urlParameters.fieldidebom)) {
+            urlParameters.bom = getSectionFieldValue(responses[0].data.sections, urlParameters.fieldidebom, '');
+            wsItems.id = urlParameters.bom.split('/')[4];
+        } else if(isBlank(urlParameters.wsid)) {
+            wsItems.id = common.workspaceIds.items;
+        } else {
+            wsItems.id = urlParameters.wsid;
+        }
 
         insertRecentItems({
             headerLabel  : 'Recently Viewed',
@@ -78,7 +85,7 @@ $(document).ready(function() {
             autoClick    : false,
             contentSize  : 'xs',
             images       : true,
-            limit        : 20,
+            limit        : 50,
             workspaceIds : [ wsItems.id ],
             tileCounter  : true,
             onClickItem  : function(elemClicked) { openSelectedItem(elemClicked); }
@@ -86,10 +93,12 @@ $(document).ready(function() {
 
         insertWorkspaceViews(wsItems.id, {
             id          : 'products',
-            columnsEx   : [ 'Image', 'PDM Status' ],
+            fieldsEx    : [ 'Image', 'PDM Status' ],
             headerLabel : 'Items Workspace',
             number      : true,
             search      : true,
+            pagination  : true,
+            limit       : 50,
             onClickItem : function(elemClicked) { openSelectedItem(elemClicked); },
             tableColumnsLimit : 10
         });
@@ -107,8 +116,8 @@ $(document).ready(function() {
             $('#overlay').hide();
             $('body').removeClass('screen-startup');
 
-            if(!isBlank(dmsId)) {
-                openItem(link);
+            if(!isBlank(urlParameters.dmsid)) {
+                openItem(urlParameters.bom);
             } else {
                 $('body').addClass('screen-landing');
             }
@@ -128,11 +137,11 @@ function setUIEvents() {
     });
     $('#button-toggle-recents').click(function() {
         $('body').toggleClass('no-recents');
-        $(this).toggleClass('icon-toggle-on').toggleClass('icon-toggle-off').toggleClass('filled');
+        $(this).toggleClass('toggle-on').toggleClass('toggle-off').toggleClass('filled');
     });
     $('#button-toggle-search').click(function() {
         $('body').toggleClass('no-search');
-        $(this).toggleClass('icon-toggle-on').toggleClass('icon-toggle-off').toggleClass('filled');
+        $(this).toggleClass('toggle-on').toggleClass('toggle-off').toggleClass('filled');
 
     });
     $('#button-home').click(function() {
@@ -232,67 +241,6 @@ function setUIEvents() {
     });
 
 
-    // Process Creation
-    // $('#create-process').click(function() {
-        
-    //     let elemParent = $('#processes-sections');
-    //         elemParent.html('');
-    //         elemParent.show();
-
-    //     $(this).siblings().show();
-    //     $(this).hide();
-
-    //     $('#processes-list').hide();
-
-    //     insertItemDetailsFields('', 'processes', wsProblemReports.sections, wsProblemReports.fields, null, true, true, true);
-
-    // });
-    // $('#cancel-process').click(function() {
-
-    //     $('.process-dialog').hide();
-    //     $('#create-process').show();
-    //     $('#processes-list').show();
-    //     $('#processes-sections').hide();
-
-    // });
-    // $('#save-process').click(function() {
-
-    //     $('#processes-processing').show();
-    //     $('#processes-processing').siblings('.panel-content').hide();
-
-    //     if(!validateForm($('#processes-sections'))) {
-    //         showErrorMessage('Cannot Save', 'Field validations faild');
-    //         return;
-    //     }
-
-    //     viewerCaptureScreenshot(null, function() {
-
-    //         $('#processes-sections').hide();
-    //         $('#processes-list').html('');
-    //         $('#processes-list').show('');
-    //         $('#processes-sections');
-    
-    //         let link = $('#processes').attr('data-link');
-    
-    //         submitCreateForm(wsProblemReports.id, $('#processes-sections'), 'viewer-markup-image', function(response ) {
-
-    //             let newLink = response.data.split('.autodeskplm360.net')[1];
-
-    //             $.get('/plm/add-managed-items', { 'link' : newLink, 'items' : [ link ] }, function(response) {
-
-    //                 insertChangeProcesses(link, paramsProcesses);
-    //                 $('.process-dialog').hide();
-    //                 $('#create-process').show();
-    //                 $('#processes-list').show();
-    //             });
-
-    //         });
-
-    //     });
-
-    // });
-
-
     // Create Connect Dialog
     $('#create-connect-cancel').click(function() {
         $('#overlay').hide();
@@ -304,7 +252,7 @@ function setUIEvents() {
 
         $('#create-connect').hide();
 
-        submitCreateForm(wsSupplierPackages.id, $('#create-connect-sections'), null, {}, function(response ) {
+        submitCreate(wsSupplierPackages.id, $('#create-connect-sections'), null, {}, function(response ) {
             $('#overlay').hide();
         });
         
@@ -317,15 +265,15 @@ function setUIEvents() {
 function getInitialData(callback) {
 
     let requests = [
-        $.get('/plm/bom-views-and-fields'   , { wsId : wsItems.id, useCache : false }),
-        $.get('/plm/details'                , { wsId : wsItems.id, dmsId : dmsId }),
-        $.get('/plm/sections'               , { wsId : wsItems.id, useCache : true }),
-        $.get('/plm/fields'                 , { wsId : wsItems.id, useCache : true }),
-        $.get('/plm/sections'               , { wsId : wsProblemReports.id, useCache : true }),
-        $.get('/plm/fields'                 , { wsId : wsProblemReports.id, useCache : true })
+        $.get('/plm/bom-views-and-fields' , { wsId : wsItems.id, useCache : true }),
+        $.get('/plm/details'              , { link : urlParameters.bom }),
+        $.get('/plm/sections'             , { wsId : wsItems.id, useCache : true }),
+        $.get('/plm/fields'               , { wsId : wsItems.id, useCache : true }),
+        $.get('/plm/sections'             , { wsId : wsProblemReports.id, useCache : true }),
+        $.get('/plm/fields'               , { wsId : wsProblemReports.id, useCache : true })
     ];
 
-    if(!isBlank(config.explorer.wsIdSupplierPackages)) {
+    if(!isBlank(wsSupplierPackages.id)) {
         requests.push($.get('/plm/sections', { wsId : wsSupplierPackages.id, useCache : true }));
         requests.push($.get('/plm/fields'  , { wsId : wsSupplierPackages.id, useCache : true }));
     }
@@ -333,21 +281,22 @@ function getInitialData(callback) {
     Promise.all(requests).then(function(responses) {
 
         for(let view of responses[0].data) {
-            if(view.name === config.explorer.bomViewName) {
+            if(view.name === config.bomViewName) {
                 wsItems.viewId = view.id;
                 wsItems.viewColumns = view.fields;
             }
         }
 
-        if(wsItems.viewId === '') showErrorMessage('Error in configuration. Could not find BOM view "' + config.explorer.bomViewName + '"');
+        if(wsItems.viewId === '') showErrorMessage('Error in configuration. Could not find BOM view "' + config.bomViewName + '"');
 
-        wsItems.sections            = responses[2].data;
-        wsItems.fields              = responses[3].data;
-        wsProblemReports.sections   = responses[4].data;
-        wsProblemReports.fields     = responses[5].data;
-        editableFields              = getEditableFields(wsItems.fields);
+        wsItems.sections          = responses[2].data;
+        wsItems.fields            = responses[3].data;
+        wsProblemReports.sections = responses[4].data;
+        wsProblemReports.fields   = responses[5].data;
+        // editableFields            = getEditableFields(wsItems.fields);
+        editableFields = [];
 
-        if(!isBlank(config.explorer.wsIdSupplierPackages)) {
+        if(!isBlank(wsSupplierPackages.id)) {
             wsSupplierPackages.sections = responses[6].data;
             wsSupplierPackages.fields   = responses[7].data;
         } else {
@@ -368,7 +317,7 @@ function openItem(link) {
     $('body').addClass('screen-main').removeClass('screen-landing');
     $('#select-version').children().remove();
     
-    $.get('/plm/versions', { link : link}, function(response) {
+    $.get('/plm/versions', { link : link }, function(response) {
 
         for(let version of response.data.versions) {
 
@@ -415,8 +364,6 @@ function selectItemVersion() {
 
     kpis = [];
 
-    // for(let kpi of config.explorer.kpis) kpis.push(kpi);
-
     viewerLeaveMarkupMode();
     getBOMData(linkVersion, revBias);
     insertViewer(linkVersion);
@@ -444,7 +391,7 @@ function onViewerSelectionChanged(event) {
 
             for(property of data.properties) {
 
-                if(config.viewer.numberProperties.indexOf(property.displayName) > -1) {
+                if(common.viewer.numberProperties.indexOf(property.displayName) > -1) {
 
                     let partNumber = property.displayValue;
 
@@ -465,10 +412,6 @@ function onViewerSelectionChanged(event) {
                                     if($(this).attr('data-part-number') === partNumber) {
                                         found = true;
                                         $(this).click();
-                                        // if(!$(this).hasClass('selected')) {
-
-                                        // }
-                                        
                                     }
                                 }
                             });
@@ -486,7 +429,7 @@ function onViewerSelectionChanged(event) {
 }
 function initViewerDone() {
     
-    $('#viewer-markup-image').attr('data-field-id', config.explorer.fieldIdProblemReportImage);
+    $('#viewer-markup-image').attr('data-field-id', config.fieldIdPRImage);
 
 }
 
@@ -503,13 +446,18 @@ function getBOMData(link, revBias) {
 
     let promises = [
         $.get('/plm/bom'     , params),
-        $.get('/plm/bom-flat', params)
+        // $.get('/plm/bom-flat', {
+        //      link          : link,
+        // depth         : 1,
+        // revisionBias  : revBias,
+        // viewId        : wsItems.viewId       
+        // })
     ];
 
     Promise.all(promises).then(function(responses) {
 
         // Copy KPIs contained in BOM View
-        for(let kpi of config.explorer.kpis) {
+        for(let kpi of config.kpis) {
             for(let field of wsItems.viewColumns) {
                 if(field.fieldId === kpi.fieldId) {
                     kpis.push(Object.assign({}, kpi));
@@ -526,18 +474,16 @@ function getBOMData(link, revBias) {
         $('#dashboard-processing').hide();
         $('#bom-processing').hide();
         setFlatBOMHeader();
-        setBOMData(responses[0].data, responses[1].data);
+        // setBOMData(responses[0].data, responses[1].data);
+        setBOMData(responses[0].data, null);
 
     });
 
 }
 function setFlatBOMHeader() {
 
-    let elemFlatBOMTHead = $('<thead></thead>');
-        elemFlatBOMTHead.appendTo($('#bom-table-flat'));
-
-    let elemFlatBOMHead = $('<tr></tr>');
-        elemFlatBOMHead.appendTo(elemFlatBOMTHead);
+    let elemFlatBOMTHead = $('<thead></thead>').appendTo($('#bom-table-flat'));
+    let elemFlatBOMHead  = $('<tr></tr>').appendTo(elemFlatBOMTHead);
     
     let elemFlatBOMHeadCheck = $('<th></th>');
         elemFlatBOMHeadCheck.html('<div id="flat-bom-select-all" class="icon flat-bom-check-box xxs"></div>');
@@ -546,29 +492,23 @@ function setFlatBOMHeader() {
             toggleSelectAll();
         });
 
-    let elemFlatBOMHeadNumber = $('<th></th>');
-        elemFlatBOMHeadNumber.html('Nr');
-        elemFlatBOMHeadNumber.addClass('sticky');
-        elemFlatBOMHeadNumber.appendTo(elemFlatBOMHead);
+    $('<th></th>').appendTo(elemFlatBOMHead)
+        .html('Nr')
+        .addClass('sticky');
 
-    let elemFlatBOMHeadItem = $('<th></th>');
-        elemFlatBOMHeadItem.html('Item');
-        elemFlatBOMHeadItem.addClass('sticky');
-        elemFlatBOMHeadItem.appendTo(elemFlatBOMHead);
+    $('<th></th>').appendTo(elemFlatBOMHead)
+        .html('Item')
+        .addClass('sticky');
 
-    let elemFlatBOMHeadQty = $('<th></th>');
-        elemFlatBOMHeadQty.html('Qty');
-        elemFlatBOMHeadQty.appendTo(elemFlatBOMHead); 
+    $('<th></th>').appendTo(elemFlatBOMHead).html('Qty');
 
-    for(kpi of kpis) {
+    for(let kpi of kpis) {
         let elemFlatBOMHeadCell = $('<th></th>');
             elemFlatBOMHeadCell.html(kpi.title);
             elemFlatBOMHeadCell.appendTo(elemFlatBOMHead);       
     }
    
-    let elemFlatBOMTBody = $('<tbody></tbody>');
-        elemFlatBOMTBody.attr('id', 'bom-table-flat-tbody');
-        elemFlatBOMTBody.appendTo($('#bom-table-flat'));
+    $('<tbody></tbody>').appendTo($('#bom-table-flat')).attr('id', 'bom-table-flat-tbody');
 
 }
 function setBOMData(bom, flatBom) {
@@ -577,7 +517,7 @@ function setBOMData(bom, flatBom) {
 
     for(let field of wsItems.viewColumns) {
 
-        if(field.fieldId === config.items.fieldIdNumber) urns.partNumber = field.__self__.urn;
+        if(field.fieldId === common.workspaces.items.fieldIdNumber) urns.partNumber = field.__self__.urn;
 
         if(rollUpFields.includes(field.fieldId)) {
             urns.rollUps.push({
@@ -606,7 +546,7 @@ function setBOMData(bom, flatBom) {
         let elemHead = $('<tr></tr>').appendTo($('#bom-table-tree'));
 
         $('<th></th>').appendTo(elemHead).addClass('bom-color');
-        $('<th></th>').appendTo(elemHead).addClass('bom-first-col');
+        $('<th></th>').appendTo(elemHead).addClass('bom-first-col').addClass('tree-first-col');
 
         for(let rollUp of urns.rollUps) {
 
@@ -619,8 +559,9 @@ function setBOMData(bom, flatBom) {
 
     }
 
+    // insertNextBOMLevel(bom, elemRoot, bom.root, null, rollUpValues);
     insertNextBOMLevel(bom, elemRoot, bom.root, flatBom, rollUpValues);
-    insertFlatBOM(flatBom);
+    // insertFlatBOM(flatBom);
 
     for(let kpi of kpis) insertKPI(kpi);
 
@@ -657,14 +598,13 @@ function insertNextBOMLevel(bom, elemRoot, parent, flatBom, parentRollUps) {
 
             if(partNumber === '') partNumber = title.split(' - ')[0];
 
-            let elemRow = $('<tr></tr>');
-                elemRow.attr('data-number', edge.itemNumber);
-                elemRow.attr('data-part-number', partNumber);
-                elemRow.attr('data-title', title);
-                elemRow.attr('data-qty', '1');
-                elemRow.addClass('bom-item');
-                elemRow.addClass('content-item');
-                elemRow.appendTo(elemRoot);
+            let elemRow = $('<tr></tr>').appendTo(elemRoot)
+                .attr('data-number', edge.itemNumber)
+                .attr('data-part-number', partNumber)
+                .attr('data-title', title)
+                .attr('data-qty', '1')
+                .addClass('bom-item')
+                .addClass('content-item');
     
             for(let kpi of kpis) {
 
@@ -718,9 +658,11 @@ function insertNextBOMLevel(bom, elemRoot, parent, flatBom, parentRollUps) {
             $('<td></td>').appendTo(elemRow).addClass('bom-color');
 
             let elemCell = $('<td></td>').appendTo(elemRow)
-                .addClass('bom-first-col');
+                .addClass('bom-first-col')
+                .addClass('tree-first-col');
 
             $('<span></span>').appendTo(elemCell)
+                .addClass('tree-number')
                 .addClass('bom-number')
                 .html(edge.depth + '.' + edge.itemNumber);
 
@@ -769,11 +711,11 @@ function insertNextBOMLevel(bom, elemRoot, parent, flatBom, parentRollUps) {
                 
                 if(hasChildren) {
 
-                    let elemNav = $('<span></span>');
-                        elemNav.addClass('bom-nav');
-                        elemNav.addClass('icon');
-                        elemNav.addClass('expanded');
-                        elemNav.prependTo(elemCell);
+                    $('<span></span>').prependTo(elemCell)
+                        .addClass('tree-nav')
+                        .addClass('bom-nav')
+                        .addClass('icon')
+                        .addClass('expanded');
 
                     elemRow.addClass('node');
 
@@ -1021,7 +963,7 @@ function insertFlatBOM(flatBom) {
 
             elemRowCell.appendTo(elemRow); 
 
-            for(editableField of editableFields) {
+            for(let editableField of editableFields) {
 
                 if(kpi.fieldId === editableField.id) {
 
@@ -1101,8 +1043,8 @@ function parseKPI(kpi, value, label) {
         value     : value, 
         label     : label,
         count     : 1, 
-        color     : config.colors.list[ kpi.data.length % config.colors.list.length ],
-        vector    : config.vectors.list[kpi.data.length % config.vectors.list.length] 
+        color     : colors.list[ kpi.data.length % colors.list.length ],
+        vector    : colors.vectors.list[kpi.data.length % colors.vectors.list.length] 
     });
 
 }
@@ -1157,8 +1099,14 @@ function insertKPI(kpi) {
 
     for(let entry of kpi.data) {
 
-        let color =  entry.color;
+        let color = entry.color;
         let label = entry.label || entry.value;
+
+        if(typeof color === 'string') {
+            if(color.indexOf('#')  < 0) color = colors[color]; 
+        } else color = colors.list[color];
+
+        entry.color = color;
 
         if(label === '') label = '-';
 
@@ -1183,7 +1131,7 @@ function insertKPI(kpi) {
             let width = entry.count * 100 / kpi.max;
             elemKPIValue.css('background', 'linear-gradient(90deg, ' + color + ' 0 ' + width + '%, var(--color-surface-level-1) ' + width + '% 100%)');
         } else {
-            elemKPILabel.css('border-color', entry.color);
+            elemKPILabel.css('border-color', color);
         }
 
     }
@@ -1218,11 +1166,9 @@ function selectKPI(elemClicked) {
 
     if(kpiData === null) return;
 
-    // $('#bom').removeClass('no-colors');
-    // $('#flat-bom').removeClass('no-colors');
     elemClicked.addClass('selected');
 
-    viewerResetColors();
+    // viewerResetColors();
 
     elemClicked.find('.kpi-value').each(function() {
     
@@ -1262,7 +1208,7 @@ function selectKPI(elemClicked) {
             let value   = null;
             let urn     = $(this).attr('data-urn');
 
-            for (bomItem of bomItems) {
+            for(let bomItem of bomItems) {
                 if(bomItem.urn === urn) {
                     value = bomItem[id];
                 }
@@ -1274,9 +1220,13 @@ function selectKPI(elemClicked) {
 
         });
 
+        if(vector !== null) {
+            if(typeof vector === 'string') vector = colors.vectors[vector]; else vector = colors.list[vector];
+        }
+
         viewerSetColors(partNumbers, { 
-            'color' : vector ,
-            'resetColors' : false
+            color       : vector,
+            resetColors : false
         });
 
     });
@@ -1381,14 +1331,11 @@ function applyFilters() {
 function refreshKPIs() {
 
     let params = {
-        'wsId'          : wsId,
-        'dmsId'         : dmsId,
-        'depth'         : 10,
-        // 'revisionBias'  : 'allChangeOrder',
-        // 'revisionBias'  : 'changeOrder',
-        'revisionBias'  : 'release',
-        // 'revisionBias'  : 'working',
-        'viewId'        : wsItems.viewId
+        wsId         : wsId,
+        dmsId        : dmsId,
+        depth        : 10,
+        revisionBias : 'release',
+        viewId       : wsItems.viewId
     }
 
     let promises = [
@@ -1427,17 +1374,15 @@ function refreshKPIs() {
 }
 function parsetNextBOMLevelKPIs(bom, parent) {
 
-    for(edge of bom.edges) {
+    for(let edge of bom.edges) {
 
         if(edge.parent === parent) {
 
-            let partNumber  = getBOMCellValue(edge.child, urns.partNumber , bom.nodes);
-            // let link        = getBOMNodeLink(edge.child, bom.nodes);
-            let newBOMItem  = { 'urn' : edge.child, 'part-number' : partNumber };
-            let newItem     = true;
+            let partNumber = getBOMCellValue(edge.child, urns.partNumber , bom.nodes);
+            let newBOMItem = { 'urn' : edge.child, 'part-number' : partNumber };
+            let newItem    = true;
 
-
-            for(kpi of kpis) {
+            for(let kpi of kpis) {
 
                 let kpiValue = getBOMCellValue(edge.child, kpi.urn, bom.nodes, 'title');
 
@@ -1466,8 +1411,6 @@ function parsetNextBOMLevelKPIs(bom, parent) {
                 }
     
                 if(newItem) bomItems.push(newBOMItem);
-
-                
     
             }
 
@@ -1508,7 +1451,6 @@ function refreshKPI(kpi) {
 
             if(elemKPI.hasClass('selected')) {
                 elemKPI.removeClass('selected');
-                // selectKPI(elemKPISelector);
                 elemKPISelector.click();
             }
             
@@ -1520,25 +1462,23 @@ function refreshKPI(kpi) {
             let color =  entry.color;
             let label = (entry.value === '') ? '-' : entry.value;
     
-            let elemKPIValue = $('<div></div>');
-                elemKPIValue.attr('data-filter', entry.value);
-                elemKPIValue.addClass('kpi-value');
-                elemKPIValue.appendTo(elemKPIValues);
-                elemKPIValue.click(function(e) {
+            let elemKPIValue = $('<div></div>').appendTo(elemKPIValues)
+                .attr('data-filter', entry.value)
+                .addClass('kpi-value')
+                .click(function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     selectKPIValue(e, $(this));
                 });
         
-            let elemKPILabel = $('<div></div>');
-                elemKPILabel.addClass('kpi-label');
-                elemKPILabel.html(label);
-                elemKPILabel.appendTo(elemKPIValue);
+            let elemKPILabel = $('<div></div>').appendTo(elemKPIValue)
+                .addClass('kpi-label')
+                .html(label);
+
     
-            let elemKPICounter = $('<div></div>');
-                elemKPICounter.addClass('kpi-counter');
-                elemKPICounter.html(entry.count);
-                elemKPICounter.appendTo(elemKPIValue);
+            $('<div></div>').appendTo(elemKPIValue)
+                .addClass('kpi-counter')
+                .html(entry.count);
     
             if(kpi.style === 'bars') {
                 let width = entry.count * 100 / kpi.max;
@@ -1552,35 +1492,7 @@ function refreshKPI(kpi) {
 
     });
     
-    
 }
- 
-
-// Display create & connect dialog
-// function showCreateDialog() {
-
-//     $('#overlay').show();
-//     $('#create-connect').show();
-
-//     insertItemDetailsFields('', 'create-connect', wsSupplierPackages.sections, wsSupplierPackages.fields, null, true, true, true);
-
-//     let elemField;
-
-//     $('#create-connect-sections').find('.multi-picklist').each(function() {
-//         if($(this).attr('data-id') === 'SHARED_ITEMS') elemField = $(this);
-//     });
-
-//     $('#bom-table-tree').children('.selected').each(function() {
-
-//         let elemOption = $('<div></div>');
-//             elemOption.attr('data-link', $(this).attr('data-link'));
-//             elemOption.html($(this).attr('data-title'));
-//             elemOption.appendTo(elemField);
-        
-//     });
-
-// }
-
 
 
 // Save BOM Changes
@@ -1609,8 +1521,8 @@ function saveBOMChange() {
                 let elemItem = $(this);
 
                 let params = { 
-                    'link'     : elemItem.attr('data-link'),
-                    'sections' : []
+                    link     : elemItem.attr('data-link'),
+                    sections : []
                 };      
         
                 elemItem.children('.changed').each(function() {
