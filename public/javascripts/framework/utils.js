@@ -2,7 +2,7 @@ let userAccount         = { displayName : '', groupsAssigned : [] };
 let urlParameters       = {};
 let languageId          = '1';
 let username            = '';
-let isiPad              = navigator.userAgent.match(/iPad/i)   != null;
+const isiPad            = ( navigator.userAgent.includes('iPad') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) );
 let isiPhone            = navigator.userAgent.match(/iPhone/i) != null;
 let applicationFeatures = {}
 let viewerFeatures      = {};
@@ -1848,7 +1848,6 @@ function genPanelSearchInput(id, panelSettings) {
     let elemSearch = $('<div></div>').appendTo(elemToolbar)
         .addClass('button')
         .addClass('panel-search')
-        .addClass('with-icon')
         .attr('id', id + '-search');
 
     $('<div></div>').appendTo(elemSearch)

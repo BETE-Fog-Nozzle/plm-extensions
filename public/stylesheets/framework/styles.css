@@ -2085,6 +2085,7 @@ and (max-device-width : 1900px)  {
 .black-theme.surface-level-5 .panel-controls-spacer {  background : var(--color-surface-level-2); }
 
 .panel-search.button {
+    display   : flex;
     gap       : 2px;
     height    : 24px;
     padding   : 6px;
@@ -2092,17 +2093,20 @@ and (max-device-width : 1900px)  {
     min-width : 220px;
     width     : 220px;
 }
-.panel-search-input {
-    flex-grow : 1;
-    min-width : 76px;
-}
-.panel-controls > .panel-search > .button {
+.panel-search.button > .button {
     font-size   : 22px;
+    max-height  : 22px;
+    min-height  : 22px;
     height      : 22px;
     line-height : 22px;
     max-width   : 22px;
     min-width   : 22px;
     width       : 22px;
+}
+.panel-search.button > input {
+    flex-grow : 1;
+    font-size : 14px;
+    min-width : 76px;
 }
 
 
@@ -2161,39 +2165,23 @@ and (max-device-width : 1900px)  {
     right           : 0px;
     left            : 0px;
 }
-.panel-actions > .button,
+/* .panel-actions > .button,
 .panel-actions > input {
     height          : 36px;
     line-height     : 36px;
     padding         : 0px 16px;
-}
-.panel-actions > .button.with-icon::before {
+} */
+/* .panel-actions > .button.with-icon::before {
     line-height : 35px;
     width       : 32px;
-}
+} */
 .panel-actions > input {
     background   : var(--color-surface-level-3);
     border-color : var(--color-surface-level-5);
     border-top   : 1px solid var(--color-surface-level-3);;
     padding      : 0px 16px;
 }
-.panel-actions > .panel-search {
-    height  : 28px;
-    padding : 4px;
-}
-.panel-actions > .panel-search > input {
-    padding : 2px 
-}
-.panel-actions > .panel-search > .button {
-    max-height  : 24px;
-    min-height  : 24px;
-    height      : 24px;
-    line-height : 24px;
-    margin-top  : 1px;
-    max-width   : 24px;
-    min-width   : 24px;
-    width       : 24px;
-}
+
 .panel-top.search > .panel-actions { justify-content: center; }
 
 .panel-options {
@@ -3006,9 +2994,6 @@ select.button.main:hover {
     text-rendering          : optimizeLegibility;
     -webkit-font-smoothing  : antialiased;
 }
-.button.with-icon { 
-    display : flex;
- }
 .button.with-icon > input {
     border-color : transparent;
 }
@@ -3299,6 +3284,70 @@ select.button.main:hover {
 }
 .message-footer {
     font-size : 12px;
+}
+
+
+
+/* iPads (landscape) ----------- */
+@media only screen and (orientation: landscape)
+                   and (min-width: 768px)    /* smallest iPad landscape viewport */
+                   and (max-width: 1366px)   /* largest iPad Pro landscape viewport */
+                   and (
+                       (min-resolution: 2dppx) 
+                       or (-webkit-min-device-pixel-ratio: 2)
+                       or (min-resolution: 192dpi)
+                   ) {
+
+    .tabs {
+        font-size : 16px;
+    }
+
+    .tabs > div {
+        height : 28px;
+    }
+
+    .panel-header {
+        height : 42px;
+    }
+
+    .panel-title-main {
+        font-size : 16px;
+    }
+
+    .panel-search.button {
+        height    : 32px;
+        padding   : 2px;
+        max-width : 160px;
+        min-width : 160px;
+        width     : 160px;
+    }
+
+    .panel-search.button > .button {
+        font-size   : 24px;
+        max-height  : 30px;
+        min-height  : 30px;
+        height      : 30px;
+        line-height : 30px;
+        max-width   : 30px;
+        min-width   : 30px;
+        width       : 30px;
+    }
+
+    .panel-actions {
+        top : 42px;
+    }
+
+    .panel-content {
+        top : 48px;
+    }
+    .panel-top.with-panel-actions > .panel-content {
+        top : 106px;
+    }
+
+    .panel-content.s tr > td, .panel-content.s tr.content-item > td > input, .panel-content.s tr.content-item > td > select, .panel-content.s tr.content-item > td > textarea {
+        padding: 0px 6px;
+    }
+
 }
 
 
